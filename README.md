@@ -345,7 +345,30 @@ Run `start.bat` (Windows) or `./start.sh` (Linux and Mac) from that folder. It c
 
 Copy `.env.example` to `.env` in the repo root and fill it in. The server and every script read it, so you don't need to pass the storage flags each time. `.env` is gitignored. Real environment variables override it. Cloud Run ignores the file, so set the same variables on the service at deploy time.
 
-## Deploy the server
+## Deploy to Cloud Run
+
+Run these from the folder that holds the `Dockerfile`, `keylist.json`, `root-public.pem` and `.env`. Cloud Build builds the image in Google Cloud. If `gcloud` reports "Building using Buildpacks", you are in the wrong folder.
+
+**1. One-time setup** (replace the project ID if yours differs):
+```
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com --project pigeonholes-license-server
+PROJECT_NUMBER=$(gcloud projects describe pigeonholes-license-server --format="value(projectNumber)")
+gcloud secrets add-iam-policy-binding license-signing-key --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" --role=roles/secretmanager.secretAccessor --project pigeonholes-license-server
+gcloud projects add-iam-policy-binding pigeonholes-license-server --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" --role=roles/datastore.user
+```
+On Windows, replace `$(...)` with the number printed by `gcloud projects describe pigeonholes-license-server --format="value(projectNumber)"`.
+
+**2. Deploy:**
+```
+gcloud run deploy license-check --source . --region europe-west1 --project pigeonholes-license-server --allow-unauthenticated --min-instances 0 --set-env-vars "LICENSE_STORAGE=firestore,LICENSE_FIRESTORE_PROJECT=pigeonholes-license-server,LICENSE_KID=k1,LICENSE_SIGNING_KEY_PATH=" --set-secrets LICENSE_SIGNING_KEY=license-signing-key:latest
+```
+Keep `LICENSE_SIGNING_KEY_PATH=` (empty). `.env` is copied into the image and sets `LICENSE_SIGNING_KEY_PATH=private.pem`, which doesn't exist on Cloud Run. The empty value overrides it, so the key comes from Secret Manager.
+
+**3. Check it:** get the URL with `gcloud run services describe license-check --region europe-west1 --format="value(status.url)"`, then run the three checks in SKILL.md Step 1b.
+
+Redeploy with the same command after each change. Run `gcloud run revisions list --service license-check --region europe-west1` to see past revisions.
+
+## Deploy the server (other options)
 
 Set the variables from the table below, then run this from the repo root. For Cloud Run:
 
