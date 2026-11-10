@@ -83,14 +83,35 @@ If a key is compromised, remove it from the app in an emergency release and reis
 
 ### Signed key list (rotate without an app update)
 
-Apps can trust a list of signing keys instead of one baked-in key.
+Apps trust a signed list of signing keys, so rotating a key needs no app update. Only the root key has to be built into the app. Run every step below on your own PC.
 
-1. Once, on your PC: `python sign_keylist.py init-root --out root_private.pem`. Put the printed public key in the app as `root-public.pem`. Keep the private file offline.
-2. To add or rotate a signing key: put the public PEMs in `keys.json` (`{"k1": "...", "k2": "..."}`) and run `python sign_keylist.py sign --root-key-file root_private.pem --keys keys.json --revoked k0 --out keylist.json`.
-3. Upload `keylist.json` to the server and set `LICENSE_KEYLIST_PATH` to its path. The server serves it at `GET /v1/keys`. Do this before issuing licenses with the new kid. The file must be in the container image or mounted from a secret, since Cloud Run has no persistent disk.
+**Step 1: create the root key (once).**
+`python sign_keylist.py init-root --out root_private.pem`
+This writes two files:
+- `root_private.pem`: the root private key. Keep it offline and out of git. If you lose it, apps need an update to trust a new root.
+- `root-public.pem`: the root public key. Ship it inside the app.
+
+**Step 2: add your signing key's public half to `keys.json`.**
+Get the k1 private key from Secret Manager (it's never committed):
+`gcloud secrets versions access latest --secret license-signing-key --project YOUR_PROJECT > private.pem`
+Then add its public half. No private key is copied:
+`python sign_keylist.py make-keys --kid k1 --key-file private.pem --out keys.json`
+Repeat with another kid when you rotate, for example `--kid k2`.
+
+**Step 3: sign the key list with the root key.**
+`python sign_keylist.py sign --root-key-file root_private.pem --keys keys.json --out keylist.json`
+To block a compromised kid, add `--revoked k1` (or whichever kid).
+
+**Step 4: put the files where they're used.**
+- `keylist.json` goes next to the Dockerfile, so the image copies it in. For Cloud Run, either rebuild with the new file or mount it from a secret, then set `LICENSE_KEYLIST_PATH`.
+- The server serves it at `GET /v1/keys`. Do this before issuing licenses with the new kid.
+- `root-public.pem` goes inside the app.
+
+**Step 5: reissue existing licenses after a rotation.**
+`python regenerate_licenses.py --firestore-project YOUR_PROJECT --new-kid k2 --key-file private-k2.pem --dry-run`
+The database is not changed.
 
 The Python and Node verifiers fetch and cache the list: `load_trusted_keys(root_pem, cache_path=..., endpoint=...)` in Python, and `loadTrustedKeys(rootPem, {cachePath, endpoint})` in Node. Each list is verified with the root key. A list older than the cached one is ignored, so an old list can't undo a revocation. Rust and Dart don't have this yet.
-4. Reissue existing licenses with `python regenerate_licenses.py --firestore-project ... --new-kid k2 --key-file private-k2.pem --dry-run`. Firestore is not changed.
 
 Only the root key needs an app update if it is ever compromised.
 

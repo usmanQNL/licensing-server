@@ -48,7 +48,8 @@ A JSON object with `kid`, `payload`, and `signature`.
 
 ### 2a. Signed key list (v1)
 
-- The app bakes in one root public key (`root-public.pem`). It never changes.
+- The app bakes in one root public key (`root-public.pem`). It never changes. `sign_keylist.py init-root` creates it, next to the root private key.
+- `keys.json` holds only public keys (one PEM per kid). `sign_keylist.py make-keys` adds them, and no private key is copied.
 - `GET {endpoint}/v1/keys` returns a key list signed by the root key: `{"kid": "root", "payload": {"v": 1, "issued_at", "keys": {kid: PEM}, "revoked": [kid]}, "signature"}`.
 - The app verifies the list with the root key, caches it, and uses the cache when the network is down. A copy shipped with the app covers the first run.
 - Rotation: add the new kid to the list, upload it, then issue licenses with the new kid. Apps trust it without an update.

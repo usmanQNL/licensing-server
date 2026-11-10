@@ -34,7 +34,7 @@ Replace `SERVER` with the endpoint URL, with no trailing slash.
    ```
 2. **Key list (if the project uses one).** Expect HTTP 200 and JSON with `"kid": "root"`. The verifier checks the signature with the root public key:
    ```bash
-   curl -sS -o keylist.json -w "%{http_code}\n" https://SERVER/v1/keys
+   curl -sS -o keylist-from-server.json -w "%{http_code}\n" https://SERVER/v1/keys
    ```
    HTTP 503 means the server has no `LICENSE_KEYLIST_PATH` set yet. Fix that on the server, then retry.
 3. **Signed check reply.** Send a test license ID that does not exist. Expect HTTP 200 and a reply with `"status": "unknown"` and a `signature`. Verify it with the server's signing public key (`check_online_reply` or `checkOnlineReply`). Nothing is stored for an unknown license.

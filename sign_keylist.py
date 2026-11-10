@@ -5,13 +5,16 @@ Run this on your own PC. The root private key never goes to the server, to git, 
 
 Step 1, once: create the root key pair.
   python sign_keylist.py init-root --out root_private.pem
-  Copy the printed public key into the app (packaging/keys/root-public.pem). Back up root_private.pem offline.
+  This writes root_private.pem (keep it offline, never in git) and root-public.pem (ship it inside the app).
 
-Step 2, whenever a signing key is added, rotated or retired: sign a new key list.
+Step 2, add a signing key to keys.json (public half only, no private key is copied).
+  python sign_keylist.py make-keys --kid k1 --key-file private.pem --out keys.json
+  Repeat with another kid when you rotate. keys.json maps each kid to its public PEM.
+
+Step 3, sign the key list with the root key.
   python sign_keylist.py sign --root-key-file root_private.pem --keys keys.json --out keylist.json
-  keys.json maps each signing kid to its public PEM, e.g. {"k1": "-----BEGIN PUBLIC KEY-----..."}.
   Add --revoked k0 to block a compromised signing kid.
-  Upload keylist.json to the server (LICENSE_KEYLIST_PATH) BEFORE issuing any license with the new kid.
+  Put keylist.json next to the Dockerfile and rebuild, or upload it, BEFORE issuing any license with the new kid.
 """
 import argparse
 import base64
@@ -37,13 +40,39 @@ def cmd_init_root(args) -> None:
     key = Ed25519PrivateKey.generate()
     pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                             serialization.NoEncryption())
-    with open(args.out, "xb") as f:  # "x": refuse to overwrite an existing root key
-        f.write(pem)
+    pub_path = cmd_init_root_paths(args.out)
     pub = key.public_key().public_bytes(serialization.Encoding.PEM,
                                         serialization.PublicFormat.SubjectPublicKeyInfo)
-    print(f"wrote root private key to {args.out} (keep it offline and out of git)")
-    print("root public key (put this in the app):")
-    print(pub.decode("ascii"))
+    with open(args.out, "xb") as f:  # "x": refuse to overwrite an existing root key
+        f.write(pem)
+    with open(pub_path, "xb") as f:
+        f.write(pub)
+    print(f"wrote {args.out} (keep it offline and out of git)")
+    print(f"wrote {pub_path} (ship this inside the app)")
+
+
+def cmd_init_root_paths(out: str) -> str:
+    import os
+    return os.path.join(os.path.dirname(os.path.abspath(out)), "root-public.pem")
+
+
+def cmd_make_keys(args) -> None:
+    import os
+    with open(args.key_file, "rb") as f:
+        key = serialization.load_pem_private_key(f.read(), password=None)
+    if not isinstance(key, Ed25519PrivateKey):
+        sys.exit("error: the signing key must be Ed25519")
+    pub = key.public_key().public_bytes(serialization.Encoding.PEM,
+                                        serialization.PublicFormat.SubjectPublicKeyInfo).decode("ascii")
+    keys = {}
+    if os.path.exists(args.out):
+        with open(args.out, encoding="utf-8") as f:
+            keys = json.load(f)
+    keys[args.kid] = pub
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(keys, f, indent=2)
+        f.write("\n")
+    print(f"added kid {args.kid} to {args.out} (public key only)")
 
 
 def cmd_sign(args) -> None:
@@ -83,6 +112,12 @@ def main():
     s1 = sub.add_parser("init-root", help="Create the root key pair (once).")
     s1.add_argument("--out", required=True, help="Path for the root private key PEM (must not exist).")
     s1.set_defaults(func=cmd_init_root)
+
+    s3 = sub.add_parser("make-keys", help="Add a signing key's public half to keys.json.")
+    s3.add_argument("--kid", required=True, help="Kid for this signing key, e.g. k1.")
+    s3.add_argument("--key-file", required=True, help="Path to the signing key's private PEM (read only).")
+    s3.add_argument("--out", default="keys.json", help="keys.json to create or update. Default keys.json.")
+    s3.set_defaults(func=cmd_make_keys)
 
     s2 = sub.add_parser("sign", help="Sign a key list with the root key.")
     s2.add_argument("--root-key-file", required=True, help="Path to the root private key PEM.")
