@@ -1,0 +1,22 @@
+{
+  "0-LIC-SEAT-install-AAAAAA": {
+    "license_id": "LIC-SEAT",
+    "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-SEAT\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T07:07:44Z\", \"valid_until\": \"2026-11-17T07:07:44Z\"}, \"signature\": \"xi7Fwy4lU5lI_9PYtQqw0TDqucz2qqGSoadgH4zUpwmO8_ws_IyR6WSCjV2UiFCOi2MQcM5lXW5TFTgMckgWAg\"}"
+  },
+  "1-LIC-SEAT-install-BBBBBB": {
+    "license_id": "LIC-SEAT",
+    "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-SEAT\", \"status\": \"limit_reached\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T07:07:44Z\", \"valid_until\": \"2026-11-17T07:07:44Z\"}, \"signature\": \"lrsLFhwgFvW23Sw1xZSooG2gt4yzdOiAuNjsS7hXKhymoePmT_j-VruIM9e3HwGwz0tRMoMTdDmEJKla7rvNCg\"}"
+  },
+  "2-LIC-SEAT-install-AAAAAA": {
+    "license_id": "LIC-SEAT",
+    "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-SEAT\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T07:07:44Z\", \"valid_until\": \"2026-11-17T07:07:44Z\"}, \"signature\": \"xi7Fwy4lU5lI_9PYtQqw0TDqucz2qqGSoadgH4zUpwmO8_ws_IyR6WSCjV2UiFCOi2MQcM5lXW5TFTgMckgWAg\"}"
+  },
+  "3-LIC-DEF-install-CCCCCC": {
+    "license_id": "LIC-DEF",
+    "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-DEF\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T07:07:44Z\", \"valid_until\": \"2026-11-17T07:07:44Z\"}, \"signature\": \"u1U33Dj1ZWeVcafPtZpTGGvYVf585ajjl4S0zNXNloihuIbnWNUIuEZihf3rbZ2Hl7sr8swgTsIH5nmlkMAFBQ\"}"
+  },
+  "4-LIC-DEF-install-DDDDDD": {
+    "license_id": "LIC-DEF",
+    "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-DEF\", \"status\": \"limit_reached\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T07:07:44Z\", \"valid_until\": \"2026-11-17T07:07:44Z\"}, \"signature\": \"vv_GJAzVPng7hxJQKnpYhex6yhYT-RXgSNF8sZ63ngoYm1nwyL1zy_hIQp166xgsXCFgXrHE6BkCS1l4VF6GDg\"}"
+  }
+}

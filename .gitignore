@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Keys and issued licenses never go in git
+*.pem
+*.key
+licenses/
+license-data.json
+dev-data.json
+.env
+
+# Public keys the apps and tests need (not secrets)
+!verifiers/online-public.pem
+app/root-public.pem
+keys.json
+keylist.json
