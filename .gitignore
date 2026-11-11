@@ -1,18 +1,36 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-
-# Keys and issued licenses never go in git
-*.pem
+# Private signing keys. Never commit these.
+keys/
+root_private.pem
+*_private.pem
+private*.pem
+private.pem
 *.key
+*.p8
+
+# Deployment-specific key files. Public, but they belong to one deployment,
+# not to this repo. Keep them next to the Dockerfile on your own machine.
+*.pem
+!verifiers/online-public.pem
+keys.json
+keylist.json
+
+# Settings and secrets
+.env
+gcp-sa.json
+
+# Issued license files and license store exports
 licenses/
 license-data.json
 dev-data.json
-.env
 
-# Public keys the apps and tests need (not secrets)
-!verifiers/online-public.pem
-app/root-public.pem
-keys.json
-keylist.json
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Rust / Node / Dart build output
+verifiers/rust/target/
+node_modules/
+.dart_tool/

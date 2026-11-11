@@ -7,7 +7,11 @@ use serde_json::Value;
 
 const SUPPORTED_VERSION: i64 = 1;
 const GRACE_DAYS: i64 = 14;
-const MODES: [&str; 4] = ["opensource", "subscription", "gated", "full"];
+const MODES: [&str; 3] = ["opensource", "subscription", "gated"];
+// "full" was merged into "subscription". Licenses issued as "full" still verify.
+fn canonical_plan(name: &str) -> &str {
+    if name == "full" { "subscription" } else { name }
+}
 
 /// Trusted public keys as (kid, SPKI PEM) pairs. A single pair is used for files without a kid.
 pub type Keys<'a> = &'a [(&'a str, &'a str)];
@@ -74,6 +78,7 @@ fn parse_time(text: &str) -> Option<DateTime<Utc>> {
 
 /// Verifies a license file for a mode. Never panics on bad input.
 pub fn verify_license(text: &str, keys: Keys, mode: &str, features_needed: &[&str], now: DateTime<Utc>) -> LicenseResult {
+    let mode = canonical_plan(mode);
     if !MODES.contains(&mode) {
         return license_fail("unknown mode", Value::Null);
     }
@@ -89,13 +94,13 @@ pub fn verify_license(text: &str, keys: Keys, mode: &str, features_needed: &[&st
     if payload.get("v").and_then(|v| v.as_i64()) != Some(SUPPORTED_VERSION) {
         return license_fail("unsupported license version", payload);
     }
-    let plan = payload.get("plan").and_then(|p| p.as_str()).unwrap_or("");
+    let plan = canonical_plan(payload.get("plan").and_then(|p| p.as_str()).unwrap_or(""));
     if mode != "opensource" && plan != mode {
         return license_fail(&format!("license is for plan '{plan}', app is '{mode}'"), payload);
     }
 
     let mut in_grace = false;
-    if mode == "subscription" || mode == "full" {
+    if mode == "subscription" {
         if let Some(exp_text) = payload.get("expires_at").and_then(|e| e.as_str()) {
             let expires = match parse_time(exp_text) {
                 Some(d) => d,

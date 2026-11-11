@@ -4,7 +4,10 @@ const crypto = require('crypto');
 
 const SUPPORTED_VERSION = 1;
 const GRACE_MS = 14 * 24 * 60 * 60 * 1000;
-const MODES = ['opensource', 'subscription', 'gated', 'full'];
+const MODES = ['opensource', 'subscription', 'gated'];
+// 'full' was merged into 'subscription'. Licenses issued as 'full' still verify.
+const LEGACY_PLAN_ALIASES = { full: 'subscription' };
+const canonicalPlan = (name) => LEGACY_PLAN_ALIASES[name] || name;
 
 // Canonical JSON: keys sorted at every level, no whitespace.
 function canonical(value) {
@@ -28,6 +31,7 @@ function pickKey(keys, kid) {
 
 // Never throws for bad license input. Returns { valid, reason, payload, inGrace }.
 function verifyLicense(text, keys, mode, { featuresNeeded = [], now = Date.now() } = {}) {
+  mode = canonicalPlan(mode);
   if (!MODES.includes(mode)) throw new Error('unknown mode: ' + mode);
 
   let doc, payload, signature;
@@ -45,12 +49,13 @@ function verifyLicense(text, keys, mode, { featuresNeeded = [], now = Date.now()
 
   if (payload.v !== SUPPORTED_VERSION) return { valid: false, reason: 'unsupported license version', payload };
 
-  if (mode !== 'opensource' && payload.plan !== mode) {
+  const plan = canonicalPlan(payload.plan);
+  if (mode !== 'opensource' && plan !== mode) {
     return { valid: false, reason: `license is for plan '${payload.plan}', app is '${mode}'`, payload };
   }
 
   let inGrace = false;
-  if ((mode === 'subscription' || mode === 'full') && payload.expires_at) {
+  if (mode === 'subscription' && payload.expires_at) {
     const expires = parseTime(payload.expires_at);
     if (now > expires) {
       if (now <= expires + GRACE_MS) inGrace = true;

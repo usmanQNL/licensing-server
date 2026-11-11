@@ -10,7 +10,9 @@ import 'package:cryptography/cryptography.dart';
 
 const supportedVersion = 1;
 const graceDays = 14;
-const modes = ['opensource', 'subscription', 'gated', 'full'];
+const modes = ['opensource', 'subscription', 'gated'];
+// 'full' was merged into 'subscription'. Licenses issued as 'full' still verify.
+String canonicalPlan(String name) => name == 'full' ? 'subscription' : name;
 
 class LicenseResult {
   final bool valid;
@@ -60,6 +62,7 @@ Future<LicenseResult> verifyLicense(
   List<String> featuresNeeded = const [],
   DateTime? now,
 }) async {
+  mode = canonicalPlan(mode);
   if (!modes.contains(mode)) throw ArgumentError('unknown mode: $mode');
   now ??= DateTime.now().toUtc();
 
@@ -74,12 +77,13 @@ Future<LicenseResult> verifyLicense(
 
   if (payload['v'] != supportedVersion) return LicenseResult(false, 'unsupported license version', payload);
 
-  if (mode != 'opensource' && payload['plan'] != mode) {
+  final plan = canonicalPlan('${payload['plan']}');
+  if (mode != 'opensource' && plan != mode) {
     return LicenseResult(false, "license is for plan '${payload['plan']}', app is '$mode'", payload);
   }
 
   var inGrace = false;
-  if ((mode == 'subscription' || mode == 'full') && payload['expires_at'] != null) {
+  if (mode == 'subscription' && payload['expires_at'] != null) {
     final expires = DateTime.parse(payload['expires_at'] as String).toUtc();
     if (now.isAfter(expires)) {
       if (now.isBefore(expires.add(const Duration(days: graceDays))) ||

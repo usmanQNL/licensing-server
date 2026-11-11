@@ -8,8 +8,8 @@ const [licensePath, publicKeyPath] = process.argv.slice(2);
 const text = fs.readFileSync(licensePath, 'utf8');
 const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
 
-// mode: 'opensource' | 'subscription' | 'gated' | 'full' (must match the license's plan)
-const result = verifyLicense(text, publicKey, 'full');
+// mode: 'opensource' | 'subscription' | 'gated' (must match the license's plan)
+const result = verifyLicense(text, publicKey, 'subscription');
 
 if (result.valid) {
   console.log('Licensed:', result.payload.customer, '-', result.reason);

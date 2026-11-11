@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Licensing Skill Flow</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#5d6670;--node:#ffffff;--line:#c9ccd1;
+--repo:#2e8b57;--private:#c2412d;--server:#2f6fbf;--customer:#7c4dbd;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16181c;--fg:#e6e8eb;--muted:#9aa3ad;--node:#1f2228;--line:#3a3f47;
+--repo:#4cc08a;--private:#f0705c;--server:#6aa6ef;--customer:#b08cf0;}}
+:root[data-theme="dark"]{--bg:#16181c;--fg:#e6e8eb;--muted:#9aa3ad;--node:#1f2228;--line:#3a3f47;
+--repo:#4cc08a;--private:#f0705c;--server:#6aa6ef;--customer:#b08cf0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:28px 16px 48px}
+h1{font-size:24px;margin:0 0 6px}
+p.lead{color:var(--muted);margin:0 0 18px;max-width:70ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.scroll{overflow-x:auto}
+svg{display:block;width:100%;min-width:720px;height:auto;color:var(--fg)}
+.node{fill:var(--node);stroke:currentColor;stroke-width:1.3}
+.dia{stroke-width:1.5}
+.pill{fill:currentColor;fill-opacity:.06}
+.edge{stroke:currentColor;stroke-width:1.4}
+.loop{stroke:var(--private);stroke-dasharray:4 3}
+.link{stroke:var(--line);stroke-width:1.2;stroke-dasharray:4 3}
+.t1{font-size:13px;font-weight:600;fill:currentColor}
+.t2{font-size:11.5px;fill:var(--muted)}
+.lbl{font-size:11.5px;fill:var(--muted);font-style:italic}
+.warnt{fill:var(--private)}
+.ct{font-size:12px;fill:currentColor;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.chip{stroke-width:1;fill-opacity:.09}
+.bar{stroke:none}
+.repo{fill:var(--repo);stroke:var(--repo)} .private{fill:var(--private);stroke:var(--private)}
+.server{fill:var(--server);stroke:var(--server)} .customer{fill:var(--customer);stroke:var(--customer)}
+.chip.repo,.chip.private,.chip.server,.chip.customer{stroke-opacity:.6}
+.bar.repo,.bar.private,.bar.server,.bar.customer{fill-opacity:1}
+figcaption{color:var(--muted);font-size:13.5px;margin-top:10px;max-width:75ch}
+ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>add-licensing: choices and what each one creates</h1>
+<p class="lead">The left column is the path through the skill: questions are diamonds, steps are boxes. The right column is every file or resource a step creates, coloured by where it ends up.</p>
+<div class="legend">
+<span><i style="background:var(--repo)"></i>In the app's repo (ships)</span>
+<span><i style="background:var(--private)"></i>Private key, never in git</span>
+<span><i style="background:var(--server)"></i>Licensing server / cloud</span>
+<span><i style="background:var(--customer)"></i>Customer side</span>
+</div>
+<figure style="margin:0">
+<div class="scroll">
+<svg viewBox="0 0 1000 1830" role="img" aria-label="Flowchart of the add-licensing skill: the mode question exits early for OpenSource with only an MIT LICENSE file; otherwise the server question decides whether keys are made and a server deployed, then the connection is verified, licenses issued, a verifier copied, paid features wrapped for Gated mode, the online check added unless turned off, and everything tested. Each step lists the files and resources it creates.">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+<marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d1453b"/></marker>
+</defs>
+<rect x="160" y="16.0" width="180" height="36" rx="18" class="node pill"/>
+<text x="250" y="38.5" text-anchor="middle" class="t1">Run add-licensing</text>
+<line x1="250" y1="52.0" x2="250" y2="96.0" class="edge" marker-end="url(#ah)"/>
+<polygon points="250,98.0 370.0,140.0 250,182.0 130.0,140.0" class="node dia"/>
+<text x="250" y="144.5" text-anchor="middle" class="t1">Q1 · Mode?</text>
+<line x1="250" y1="182.0" x2="250" y2="226.0" class="edge" marker-end="url(#ah)"/>
+<line x1="370.0" y1="140.0" x2="528" y2="140.0" class="edge" marker-end="url(#ah)"/>
+<text x="450.0" y="133.0" text-anchor="middle" class="lbl">OpenSource</text>
+<rect x="530" y="128.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="128.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="144.0" text-anchor="start" class="ct">LICENSE (MIT) in the project, then stop</text>
+<rect x="100.0" y="228.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="253.0" text-anchor="middle" class="t1">Q2, Q3, Q6 · App name, language,</text>
+<text x="250" y="271.0" text-anchor="middle" class="t2">paid features (Gated only)</text>
+<line x1="250" y1="286.0" x2="250" y2="330.0" class="edge" marker-end="url(#ah)"/>
+<polygon points="250,332.0 370.0,374.0 250,416.0 130.0,374.0" class="node dia"/>
+<text x="250" y="371.0" text-anchor="middle" class="t1">Q4 · Already run a</text>
+<text x="250" y="387.0" text-anchor="middle" class="t2">licensing server?</text>
+<line x1="250" y1="416.0" x2="250" y2="518.0" class="edge" marker-end="url(#ah)"/>
+<rect x="100.0" y="520.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="545.0" text-anchor="middle" class="t1">Step 4 · Make keys</text>
+<text x="250" y="563.0" text-anchor="middle" class="t2">root key, signing key, key list</text>
+<line x1="250" y1="578.0" x2="250" y2="693.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="549.0" x2="514" y2="549.0" class="link"/>
+<line x1="514" y1="474.0" x2="514" y2="624.0" class="link"/>
+<line x1="514" y1="474.0" x2="530" y2="474.0" class="link"/>
+<line x1="514" y1="504.0" x2="530" y2="504.0" class="link"/>
+<line x1="514" y1="534.0" x2="530" y2="534.0" class="link"/>
+<line x1="514" y1="564.0" x2="530" y2="564.0" class="link"/>
+<line x1="514" y1="594.0" x2="530" y2="594.0" class="link"/>
+<line x1="514" y1="624.0" x2="530" y2="624.0" class="link"/>
+<rect x="530" y="462.0" width="450" height="24" rx="5" class="chip private"/>
+<rect x="530" y="462.0" width="5" height="24" rx="2" class="bar private"/>
+<text x="544" y="478.0" text-anchor="start" class="ct">keys/root_private.pem (offline, never in git)</text>
+<rect x="530" y="492.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="492.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="508.0" text-anchor="start" class="ct">root-public.pem (ships in the app)</text>
+<rect x="530" y="522.0" width="450" height="24" rx="5" class="chip private"/>
+<rect x="530" y="522.0" width="5" height="24" rx="2" class="bar private"/>
+<text x="544" y="538.0" text-anchor="start" class="ct">signing key in Secret Manager or local PEM</text>
+<rect x="530" y="552.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="552.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="568.0" text-anchor="start" class="ct">keys.json (public half of signing key)</text>
+<rect x="530" y="582.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="582.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="598.0" text-anchor="start" class="ct">keylist.json (signed by root, beside Dockerfile)</text>
+<rect x="530" y="612.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="612.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="628.0" text-anchor="start" class="ct">.gitignore: private-key patterns, keys/, licenses/</text>
+<rect x="100.0" y="695.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="720.0" text-anchor="middle" class="t1">Step 2 · Deploy server</text>
+<text x="250" y="738.0" text-anchor="middle" class="t2">README: storage, Cloud Run, env vars</text>
+<line x1="250" y1="753.0" x2="250" y2="810.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="724.0" x2="514" y2="724.0" class="link"/>
+<line x1="514" y1="694.0" x2="514" y2="754.0" class="link"/>
+<line x1="514" y1="694.0" x2="530" y2="694.0" class="link"/>
+<line x1="514" y1="724.0" x2="530" y2="724.0" class="link"/>
+<line x1="514" y1="754.0" x2="530" y2="754.0" class="link"/>
+<rect x="530" y="682.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="682.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="698.0" text-anchor="start" class="ct">Cloud Run service with /v1/health, /v1/keys, /v1/check</text>
+<rect x="530" y="712.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="712.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="728.0" text-anchor="start" class="ct">License store (Firestore or other NoSQL)</text>
+<rect x="530" y="742.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="742.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="758.0" text-anchor="start" class="ct">Env vars incl. LICENSE_KEYLIST_PATH</text>
+<rect x="100.0" y="812.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="837.0" text-anchor="middle" class="t1">Step 3 · Verify connection</text>
+<text x="250" y="855.0" text-anchor="middle" class="t2">3 checks must pass: health, keys, reply</text>
+<line x1="250" y1="870.0" x2="250" y2="914.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="841.0" x2="514" y2="841.0" class="link"/>
+<line x1="514" y1="841.0" x2="530" y2="841.0" class="link"/>
+<rect x="530" y="829.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="829.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="845.0" text-anchor="start" class="ct">Endpoint URL in app settings (not hard-coded)</text>
+<rect x="100.0" y="916.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="941.0" text-anchor="middle" class="t1">Step 5 · Issue license files</text>
+<text x="250" y="959.0" text-anchor="middle" class="t2">issue_license.py, plan = subscription | gated</text>
+<line x1="250" y1="974.0" x2="250" y2="1031.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="945.0" x2="514" y2="945.0" class="link"/>
+<line x1="514" y1="930.0" x2="514" y2="960.0" class="link"/>
+<line x1="514" y1="930.0" x2="530" y2="930.0" class="link"/>
+<line x1="514" y1="960.0" x2="530" y2="960.0" class="link"/>
+<rect x="530" y="918.0" width="450" height="24" rx="5" class="chip customer"/>
+<rect x="530" y="918.0" width="5" height="24" rx="2" class="bar customer"/>
+<text x="544" y="934.0" text-anchor="start" class="ct">licenses/&lt;app&gt;/&lt;license_id&gt;.license.json → customer</text>
+<rect x="530" y="948.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="948.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="964.0" text-anchor="start" class="ct">License record with client email / phone</text>
+<rect x="100.0" y="1033.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="1058.0" text-anchor="middle" class="t1">Step 6 · Copy verifier</text>
+<text x="250" y="1076.0" text-anchor="middle" class="t2">for the chosen language</text>
+<line x1="250" y1="1091.0" x2="250" y2="1148.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="1062.0" x2="514" y2="1062.0" class="link"/>
+<line x1="514" y1="1032.0" x2="514" y2="1092.0" class="link"/>
+<line x1="514" y1="1032.0" x2="530" y2="1032.0" class="link"/>
+<line x1="514" y1="1062.0" x2="530" y2="1062.0" class="link"/>
+<line x1="514" y1="1092.0" x2="530" y2="1092.0" class="link"/>
+<rect x="530" y="1020.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1020.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1036.0" text-anchor="start" class="ct">licensing.py | licensing.js | rust crate | licensing.dart</text>
+<rect x="530" y="1050.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1050.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1066.0" text-anchor="start" class="ct">Root public key as a constant + launch check</text>
+<rect x="530" y="1080.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1080.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1096.0" text-anchor="start" class="ct">Subscription: expiry check with 14-day grace</text>
+<polygon points="250,1150.0 370.0,1192.0 250,1234.0 130.0,1192.0" class="node dia"/>
+<text x="250" y="1196.5" text-anchor="middle" class="t1">Mode is Gated?</text>
+<line x1="250" y1="1234.0" x2="250" y2="1291.0" class="edge" marker-end="url(#ah)"/>
+<rect x="100.0" y="1293.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="1318.0" text-anchor="middle" class="t1">Wrap paid features</text>
+<text x="250" y="1336.0" text-anchor="middle" class="t2">one check per listed feature</text>
+<line x1="250" y1="1351.0" x2="250" y2="1408.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="1322.0" x2="514" y2="1322.0" class="link"/>
+<line x1="514" y1="1292.0" x2="514" y2="1352.0" class="link"/>
+<line x1="514" y1="1292.0" x2="530" y2="1292.0" class="link"/>
+<line x1="514" y1="1322.0" x2="530" y2="1322.0" class="link"/>
+<line x1="514" y1="1352.0" x2="530" y2="1352.0" class="link"/>
+<rect x="530" y="1280.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1280.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1296.0" text-anchor="start" class="ct">licensing/licensing.md (feature IDs + full setup)</text>
+<rect x="530" y="1310.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1310.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1326.0" text-anchor="start" class="ct">Pointer in AGENTS.md and other agent files</text>
+<rect x="530" y="1340.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1340.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1356.0" text-anchor="start" class="ct">evaluate(..., features_needed=[...]) around each</text>
+<polygon points="250,1410.0 370.0,1452.0 250,1494.0 130.0,1452.0" class="node dia"/>
+<text x="250" y="1449.0" text-anchor="middle" class="t1">Q5 · Online check on?</text>
+<text x="250" y="1465.0" text-anchor="middle" class="t2">(default yes)</text>
+<line x1="250" y1="1494.0" x2="250" y2="1551.0" class="edge" marker-end="url(#ah)"/>
+<rect x="100.0" y="1553.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="1578.0" text-anchor="middle" class="t1">Step 7 · Daily online check</text>
+<text x="250" y="1596.0" text-anchor="middle" class="t2">POST /v1/check once a day</text>
+<line x1="250" y1="1611.0" x2="250" y2="1668.0" class="edge" marker-end="url(#ah)"/>
+<line x1="400.0" y1="1582.0" x2="514" y2="1582.0" class="link"/>
+<line x1="514" y1="1552.0" x2="514" y2="1612.0" class="link"/>
+<line x1="514" y1="1552.0" x2="530" y2="1552.0" class="link"/>
+<line x1="514" y1="1582.0" x2="530" y2="1582.0" class="link"/>
+<line x1="514" y1="1612.0" x2="530" y2="1612.0" class="link"/>
+<rect x="530" y="1540.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="1540.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="1556.0" text-anchor="start" class="ct">Check code + settings toggle to turn it off</text>
+<rect x="530" y="1570.0" width="450" height="24" rx="5" class="chip customer"/>
+<rect x="530" y="1570.0" width="5" height="24" rx="2" class="bar customer"/>
+<text x="544" y="1586.0" text-anchor="start" class="ct">install_hash, install_token, cached reply (user&#x27;s machine)</text>
+<rect x="530" y="1600.0" width="450" height="24" rx="5" class="chip server"/>
+<rect x="530" y="1600.0" width="5" height="24" rx="2" class="bar server"/>
+<text x="544" y="1616.0" text-anchor="start" class="ct">Install record per license on the server</text>
+<rect x="100.0" y="1670.0" width="300" height="58" rx="8" class="node"/>
+<text x="250" y="1695.0" text-anchor="middle" class="t1">Step 8 · Test</text>
+<text x="250" y="1713.0" text-anchor="middle" class="t2">cases.json + online-replies.json must pass</text>
+<line x1="250" y1="1728.0" x2="250" y2="1772.0" class="edge" marker-end="url(#ah)"/>
+<rect x="160" y="1774.0" width="180" height="36" rx="18" class="node pill"/>
+<text x="250" y="1796.5" text-anchor="middle" class="t1">Ship</text>
+<polyline points="130.0,374.0 36,374.0 36,796.0 247,796.0" class="edge" fill="none" marker-end="url(#ah)"/>
+<text x="87.0" y="367.0" text-anchor="middle" class="lbl">yes</text>
+<text x="258" y="432.0" text-anchor="start" class="lbl">no</text>
+<polyline points="130.0,1192.0 36,1192.0 36,1394.0 247,1394.0" class="edge" fill="none" marker-end="url(#ah)"/>
+<text x="87.0" y="1185.0" text-anchor="middle" class="lbl">no</text>
+<text x="258" y="1250.0" text-anchor="start" class="lbl">yes</text>
+<polyline points="130.0,1452.0 36,1452.0 36,1654.0 247,1654.0" class="edge" fill="none" marker-end="url(#ah)"/>
+<text x="87.0" y="1445.0" text-anchor="middle" class="lbl">no</text>
+<text x="258" y="1510.0" text-anchor="start" class="lbl">yes</text>
+<text x="258" y="198.0" text-anchor="start" class="lbl">Subscription or Gated</text>
+<polyline points="100.0,855.0 74.0,855.0 74.0,827.0 97.0,827.0" class="edge loop" fill="none" marker-end="url(#ahw)"/>
+<text x="70.0" y="845.0" text-anchor="end" class="lbl warnt">retry</text>
+</svg>
+</div>
+<figcaption>OpenSource leaves after the first question with only an MIT LICENSE. An existing server skips key making and deployment, so the only key the project holds is the root public key it was given. Gated adds the features file and agent pointers; turning the online check off removes everything Step 7 creates.</figcaption>
+</figure>
+<ul class="notes">
+<li>Keys are made before the deploy (Step 4 before Step 2) because the server needs the signing key and the key list.</li>
+<li>Old licenses issued with plan <code>full</code> still verify as Subscription; the skill no longer offers Full as a choice.</li>
+<li>Built from SKILL.md as revised on 11 Nov 2026.</li>
+</ul>
+</main>
+</body>
+</html>
