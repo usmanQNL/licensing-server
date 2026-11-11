@@ -119,14 +119,14 @@ Embed the public key in your app. Never embed the private key. Use the verifier 
 
 ### Where the app finds the license file
 
-The app reads the license file's location from its `.env` file, in a variable named after the app: `<APP_NAME>_LICENSE_FILE`. The name is the app name in uppercase with other characters turned into `_`, so `QuellDAP` uses `QUELLDAP_LICENSE_FILE`. The value is the relative path, file name and extension, relative to the project root:
+The app reads the license file's location from its `.env` file, in a variable named after the app: `<APP_NAME>_LICENSE_FILE`. The name is the app name in uppercase with other characters turned into `_`, so `QuellDAP` uses `QUELLDAP_LICENSE_FILE`. The value is the full path of the license file, with its file name and extension:
 
 ```bash
 # .env (gitignored; the skill creates it if the project has none)
-QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json
+QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json
 ```
 
-The skill also adds the line to `.env.example` and makes sure `.env` and `*.license.json` are in `.gitignore`. A real environment variable overrides `.env`. With neither set, the app looks for `<app name in lowercase>.license.json` in the project root. A missing file only turns paid features off.
+The skill also adds the line to `.env.example` and makes sure `.env`, `license.json` and `*.license.json` are in `.gitignore`. A real environment variable overrides `.env`. A relative value still works and resolves against the project root. With neither set, the app looks for `license.json` in the current working directory. A missing file only turns paid features off.
 
 Every verifier has the lookup:
 

@@ -7,9 +7,9 @@
 //
 // Run:  cd samples/node && npm install && npm start      (Node 20+)
 // Settings (environment variables, defaults are the demo files):
-//   APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (from the environment or ./.env, relative to the
-//   folder you start the server in), LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT.
-//   For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json from .env.
+//   APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (the license's full path, from the environment or
+//   ./.env; unset: ./license.json, then the demo license), LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT.
+//   For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json from .env.
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -21,11 +21,12 @@ import { licensePlan } from '../vanilla-js/license-checks.js';
 const demo = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'demo');
 const { licenseFileEnvVar, readDotenv } = createRequire(import.meta.url)('../../verifiers/node/licensing.js');
 
-// The project's .env holds the license location as <APP_NAME>_LICENSE_FILE (relative to the project root).
-// A real environment variable wins. Unset: the demo license.
+// The project's .env holds the license's full path as <APP_NAME>_LICENSE_FILE. A real environment variable
+// wins. Unset: license.json in the working directory, or the demo license if there is none.
 const licenseVar = licenseFileEnvVar(process.env.APP_NAME || 'Demo');
-const licenseRel = process.env[licenseVar] || readDotenv('.env')[licenseVar];
-const LICENSE_FILE = licenseRel ? path.resolve(licenseRel) : path.join(demo, 'license-gated.json');
+const licenseValue = process.env[licenseVar] || readDotenv('.env')[licenseVar];
+const LICENSE_FILE = licenseValue ? path.resolve(licenseValue)
+  : fs.existsSync('license.json') ? path.resolve('license.json') : path.join(demo, 'license-gated.json');
 const PUBLIC_KEY = fs.readFileSync(process.env.LICENSE_PUBLIC_KEY || path.join(demo, 'demo-public.pem'), 'utf8');
 const ALL_FEATURES = JSON.parse(fs.readFileSync(process.env.LICENSE_FEATURES || path.join(demo, 'features.json'), 'utf8'));
 

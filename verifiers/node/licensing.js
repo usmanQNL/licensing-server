@@ -171,10 +171,8 @@ function licenseFileEnvVar(appName) {
   return stem + '_LICENSE_FILE';
 }
 
-/** Default location, relative to the project root: '<app name, lowercase>.license.json'. */
-function defaultLicenseFile(appName) {
-  return (String(appName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'app') + '.license.json';
-}
+/** Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory. */
+const DEFAULT_LICENSE_FILE = 'license.json';
 
 /** Read KEY=VALUE lines from a .env file. Missing file: {}. */
 function readDotenv(file) {
@@ -194,15 +192,16 @@ function readDotenv(file) {
   return values;
 }
 
-/** Absolute path of the license file: <APP>_LICENSE_FILE from the environment, then from
- *  <projectRoot>/.env, then defaultLicenseFile(appName). Relative paths resolve against projectRoot.
+/** Absolute path of the license file. <APP>_LICENSE_FILE holds the full path; it is read from the
+ *  environment first, then from <projectRoot>/.env. A relative value resolves against projectRoot.
+ *  When the variable is unset: license.json in the current working directory.
  *  The file may not exist: treat that as no license. */
 function findLicenseFile(appName, projectRoot = '.') {
   const path = require('path');
   const name = licenseFileEnvVar(appName);
-  const rel = process.env[name] || readDotenv(path.join(projectRoot, '.env'))[name] || defaultLicenseFile(appName);
-  return path.resolve(projectRoot, rel);
+  const value = process.env[name] || readDotenv(path.join(projectRoot, '.env'))[name];
+  return value ? path.resolve(projectRoot, value) : path.resolve(process.cwd(), DEFAULT_LICENSE_FILE);
 }
 
 module.exports = { verifyLicense, checkOnlineReply, evaluate, canonical, verifyKeyList, loadTrustedKeys,
-  licenseFileEnvVar, defaultLicenseFile, readDotenv, findLicenseFile };
+  licenseFileEnvVar, DEFAULT_LICENSE_FILE, readDotenv, findLicenseFile };

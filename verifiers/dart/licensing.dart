@@ -106,7 +106,8 @@ Future<LicenseResult> verifyLicense(
 
 // ---- Locating the license file (.env: <APP_NAME>_LICENSE_FILE) ----
 // Pure string helpers, so they work in Flutter too. Read the variable from your app's .env
-// (for example with flutter_dotenv) or Platform.environment, then resolve it against the app root.
+// (for example with flutter_dotenv) or Platform.environment. It holds the full path; resolve a relative
+// value against the app root. Unset: use defaultLicenseFile in the current working directory.
 
 /// Name of the .env variable that holds the license file's location, e.g. 'QuellDAP' -> 'QUELLDAP_LICENSE_FILE'.
 String licenseFileEnvVar(String appName) {
@@ -116,11 +117,8 @@ String licenseFileEnvVar(String appName) {
   return '${stem}_LICENSE_FILE';
 }
 
-/// Default location, relative to the project root: '<app name, lowercase>.license.json'.
-String defaultLicenseFile(String appName) {
-  final stem = appName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
-  return '${stem.isEmpty ? 'app' : stem}.license.json';
-}
+/// Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory.
+const defaultLicenseFile = 'license.json';
 
 /// KEY=VALUE pairs from the text of a .env file. Comments and blank lines are skipped.
 Map<String, String> parseDotenv(String text) {

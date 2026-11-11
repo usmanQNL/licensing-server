@@ -8,7 +8,7 @@ import sys
 from licensing import find_license_file, verify_license
 
 if sys.argv[1] == "--app":
-    # The app's .env holds the license location: <APP>_LICENSE_FILE=relative/path/name.license.json
+    # The app's .env holds the license location: <APP>_LICENSE_FILE=/full/path/license.json
     license_path, public_key_path = find_license_file(sys.argv[2], project_root="."), sys.argv[3]
 else:
     license_path, public_key_path = sys.argv[1], sys.argv[2]

@@ -140,14 +140,15 @@ Copy the verifier for the chosen language into the project:
 The license file's location lives in the project's `.env` file, in one variable named after the app:
 
 - **Name:** `<APP_NAME>_LICENSE_FILE`. The application name from Step 1 in uppercase, with every run of other characters turned into `_`. `QuellDAP` gives `QUELLDAP_LICENSE_FILE`, `My App` gives `MY_APP_LICENSE_FILE`. A name that starts with a digit gets `APP_` in front.
-- **Value:** the relative path, file name and extension of the license file, relative to the project root, for example `QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json`. Use forward slashes. If the user doesn't say where, use `<app name in lowercase>.license.json` in the project root (`quelldap.license.json`).
+- **Value:** the full path of the license file, with its file name and extension, for example `QUELLDAP_LICENSE_FILE=C:/apps/quelldap/license.json` or `QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json`. Use forward slashes. A relative path still works and is resolved against the project root. If the user doesn't say where, use the full path of `license.json` in the project root.
+- **Fallback:** when the variable is not set (not in the environment and not in `.env`), the app looks for `license.json` in the current working directory.
 
 Do this in the target project:
 
 1. If the project root has no `.env`, create it. Add the variable (or update it if it is already there). Don't touch other lines.
-2. Make sure `.env` is in `.gitignore`. Also add `*.license.json` (or the license file's folder) so a license file is never committed.
+2. Make sure `.env` is in `.gitignore`. Also add `license.json` and `*.license.json` (or the license file's folder) so a license file is never committed.
 3. Add the same line to `.env.example` (create it if missing), so anyone setting up the project sees the variable. `.env.example` is committed.
-4. Load the license from that variable at startup. Every verifier has the lookup: `find_license_file(app_name, project_root)` in Python and Rust, `findLicenseFile(appName, projectRoot)` in Node, and `licenseFileEnvVar` with `parseDotenv` in Dart. It reads the variable from the real environment first, then from `<project root>/.env`, then falls back to the default name. A relative path resolves against the project root.
+4. Load the license from that variable at startup. Every verifier has the lookup: `find_license_file(app_name, project_root)` in Python and Rust, `findLicenseFile(appName, projectRoot)` in Node, and `licenseFileEnvVar` with `parseDotenv` in Dart. It reads the variable from the real environment first, then from `<project root>/.env`. When neither has it, it returns `license.json` in the current working directory. A relative value resolves against the project root.
 5. A missing or unreadable license file is not an error: paid features stay off, and the app still runs.
 
 A real environment variable overrides `.env`, so an installed app or a server can point at a license somewhere else without editing the file.
@@ -295,9 +296,9 @@ Key list files: `keys.json` at <path>, `keylist.json` at <path> (and on the serv
 | <path to verifier> | license verifier |
 | <path to root-public.pem> | trusted root public key shipped in the app |
 | <app settings file / key> | server endpoint and online-check setting |
-| `.env` | `<APP_NAME>_LICENSE_FILE=<relative/path/name.license.json>` (gitignored, created if missing) |
+| `.env` | `<APP_NAME>_LICENSE_FILE=<full/path/license.json>` (gitignored, created if missing) |
 | `.env.example` | the same variable, committed, so setup shows it |
-| `.gitignore` | ignores `.env`, `*.license.json`, `keys/`, `licenses/`, private key patterns |
+| `.gitignore` | ignores `.env`, `license.json`, `*.license.json`, `keys/`, `licenses/`, private key patterns |
 | <AGENTS.md / other agent files> | pointer to this record |
 | <...> | <...> |
 
@@ -331,7 +332,7 @@ python license_admin.py <list / show / revoke / reinstate> <...>
 | Verifier path | <path> |
 | Where the license is loaded at startup | <file:function> |
 | License file variable (in `.env`) | <QUELLDAP_LICENSE_FILE> |
-| License file location (its value, relative to the project root) | <licensing/quelldap.license.json> |
+| License file location (its value, a full path) | <C:/apps/quelldap/license.json> |
 | Key list cache path | <path> |
 
 ## Online check

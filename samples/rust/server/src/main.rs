@@ -6,9 +6,9 @@
 //!
 //! Run:  cd samples/rust/server && cargo run
 //! Settings (environment variables, defaults are the demo files):
-//!   APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (from the environment or ./.env, relative to the
-//!   folder you start the server in), LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT.
-//!   For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json from .env.
+//!   APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (the license's full path, from the environment or
+//!   ./.env; unset: ./license.json, then the demo license), LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT.
+//!   For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json from .env.
 use axum::{
     extract::{Request, State},
     http::StatusCode,
@@ -61,8 +61,8 @@ async fn get_plan(State(cfg): State<Arc<Config>>) -> Json<Value> {
     Json(cfg.current_plan())
 }
 
-/// The project's .env holds the license location as <APP_NAME>_LICENSE_FILE (relative to the project root).
-/// A real environment variable wins. None: use the demo license. The verifier crate
+/// The project's .env holds the license's full path as <APP_NAME>_LICENSE_FILE. A real environment variable wins.
+/// None: the caller falls back to ./license.json, then the demo license. The verifier crate
 /// (verifiers/rust) has the same lookup as `find_license_file`.
 fn license_file_setting() -> Option<String> {
     let app = env::var("APP_NAME").unwrap_or_else(|_| "Demo".into());
@@ -90,7 +90,9 @@ async fn main() {
     let demo = |f: &str| format!("{}/../../demo/{f}", env!("CARGO_MANIFEST_DIR"));
     let setting = |name: &str, file: &str| env::var(name).unwrap_or_else(|_| demo(file));
     let cfg = Arc::new(Config {
-        license_file: license_file_setting().unwrap_or_else(|| demo("license-gated.json")),
+        license_file: license_file_setting()
+            .or_else(|| std::path::Path::new("license.json").exists().then(|| "license.json".to_string()))
+            .unwrap_or_else(|| demo("license-gated.json")),
         public_key: fs::read_to_string(setting("LICENSE_PUBLIC_KEY", "demo-public.pem")).expect("read public key"),
         all_features: serde_json::from_str(&fs::read_to_string(setting("LICENSE_FEATURES", "features.json")).expect("read features"))
             .expect("features.json must be a list"),

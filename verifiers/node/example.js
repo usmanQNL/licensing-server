@@ -6,7 +6,7 @@ const fs = require('fs');
 const { verifyLicense, findLicenseFile } = require('./licensing');
 
 const args = process.argv.slice(2);
-// --app NAME: the app's .env holds the license location, <APP>_LICENSE_FILE=relative/path/name.license.json
+// --app NAME: the app's .env holds the license location, <APP>_LICENSE_FILE=/full/path/license.json
 const [licensePath, publicKeyPath] = args[0] === '--app' ? [findLicenseFile(args[1], '.'), args[2]] : args;
 const text = fs.readFileSync(licensePath, 'utf8');
 const publicKey = fs.readFileSync(publicKeyPath, 'utf8');

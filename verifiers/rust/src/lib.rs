@@ -231,19 +231,8 @@ pub fn license_file_env_var(app_name: &str) -> String {
     stem + "_LICENSE_FILE"
 }
 
-/// Default location, relative to the project root: "<app name, lowercase>.license.json".
-pub fn default_license_file(app_name: &str) -> String {
-    let mut stem = String::new();
-    for c in app_name.to_lowercase().chars() {
-        if c.is_ascii_alphanumeric() {
-            stem.push(c);
-        } else if !stem.is_empty() && !stem.ends_with('-') {
-            stem.push('-');
-        }
-    }
-    let stem = stem.trim_end_matches('-');
-    format!("{}.license.json", if stem.is_empty() { "app" } else { stem })
-}
+/// Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory.
+pub const DEFAULT_LICENSE_FILE: &str = "license.json";
 
 /// Value of `key` in a .env file (KEY=VALUE lines). None when the file or key is missing.
 pub fn read_dotenv_value(path: &std::path::Path, key: &str) -> Option<String> {
@@ -265,15 +254,17 @@ pub fn read_dotenv_value(path: &std::path::Path, key: &str) -> Option<String> {
     None
 }
 
-/// Path of the license file: <APP>_LICENSE_FILE from the environment, then from <project_root>/.env,
-/// then `default_license_file`. A relative path is joined to `project_root`. The file may not exist:
-/// treat that as no license.
+/// Path of the license file. <APP>_LICENSE_FILE holds the full path; it is read from the environment
+/// first, then from <project_root>/.env. A relative value is joined to `project_root`. When the variable
+/// is unset: license.json in the current working directory. The file may not exist: treat that as no license.
 pub fn find_license_file(app_name: &str, project_root: &std::path::Path) -> std::path::PathBuf {
     let var = license_file_env_var(app_name);
-    let rel = std::env::var(&var)
+    let value = std::env::var(&var)
         .ok()
         .filter(|v| !v.is_empty())
-        .or_else(|| read_dotenv_value(&project_root.join(".env"), &var).filter(|v| !v.is_empty()))
-        .unwrap_or_else(|| default_license_file(app_name));
-    project_root.join(rel)
+        .or_else(|| read_dotenv_value(&project_root.join(".env"), &var).filter(|v| !v.is_empty()));
+    match value {
+        Some(v) => project_root.join(v), // join keeps an absolute value as is
+        None => std::env::current_dir().unwrap_or_default().join(DEFAULT_LICENSE_FILE),
+    }
 }

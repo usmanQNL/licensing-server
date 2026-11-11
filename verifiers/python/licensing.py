@@ -252,10 +252,8 @@ def license_file_env_var(app_name: str) -> str:
     return stem + "_LICENSE_FILE"
 
 
-def default_license_file(app_name: str) -> str:
-    """The default location, relative to the project root: "<app name, lowercase>.license.json"."""
-    import re
-    return (re.sub(r"[^a-z0-9]+", "-", app_name.lower()).strip("-") or "app") + ".license.json"
+# Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory.
+DEFAULT_LICENSE_FILE = "license.json"
 
 
 def read_dotenv(path: str) -> dict:
@@ -282,10 +280,13 @@ def read_dotenv(path: str) -> dict:
 
 
 def find_license_file(app_name: str, project_root: str = ".") -> str:
-    """Absolute path of the license file. Looks up <APP>_LICENSE_FILE in the environment first,
-    then in <project_root>/.env, then falls back to default_license_file(app_name). A relative
-    path is resolved against project_root. The file may not exist: treat that as no license."""
+    """Absolute path of the license file. <APP>_LICENSE_FILE holds the full path; it is read from the
+    environment first, then from <project_root>/.env. A relative value is resolved against project_root.
+    When the variable is unset: license.json in the current working directory.
+    The file may not exist: treat that as no license."""
     import os
     var = license_file_env_var(app_name)
-    rel = os.environ.get(var) or read_dotenv(os.path.join(project_root, ".env")).get(var) or default_license_file(app_name)
-    return os.path.abspath(os.path.join(project_root, rel))
+    value = os.environ.get(var) or read_dotenv(os.path.join(project_root, ".env")).get(var)
+    if value:
+        return os.path.abspath(os.path.join(project_root, value))
+    return os.path.abspath(os.path.join(os.getcwd(), DEFAULT_LICENSE_FILE))

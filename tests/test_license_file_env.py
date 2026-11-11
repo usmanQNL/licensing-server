@@ -5,7 +5,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "verifiers" / "python"))
-from licensing import default_license_file, find_license_file, license_file_env_var, read_dotenv  # noqa: E402
+from licensing import DEFAULT_LICENSE_FILE, find_license_file, license_file_env_var, read_dotenv  # noqa: E402
 
 
 def test_env_var_name():
@@ -15,8 +15,7 @@ def test_env_var_name():
 
 
 def test_default_file_name():
-    assert default_license_file("QuellDAP") == "quelldap.license.json"
-    assert default_license_file("My App") == "my-app.license.json"
+    assert DEFAULT_LICENSE_FILE == "license.json"
 
 
 def test_read_dotenv(tmp_path):
@@ -27,9 +26,14 @@ def test_read_dotenv(tmp_path):
 
 def test_find_license_file_order(tmp_path, monkeypatch):
     monkeypatch.delenv("QUELLDAP_LICENSE_FILE", raising=False)
-    # No .env: the default name in the project root.
-    assert find_license_file("QuellDAP", str(tmp_path)) == str(tmp_path / "quelldap.license.json")
-    # .env names it, relative to the project root.
+    # Unset: license.json in the current working directory.
+    monkeypatch.chdir(tmp_path / "..")
+    assert find_license_file("QuellDAP", str(tmp_path)) == os.path.abspath("license.json")
+    # .env holds a full path.
+    full = tmp_path / "elsewhere" / "q.license.json"
+    (tmp_path / ".env").write_text(f"QUELLDAP_LICENSE_FILE={full}\n", encoding="utf-8")
+    assert find_license_file("QuellDAP", str(tmp_path)) == str(full)
+    # A relative value still works, resolved against the project root.
     (tmp_path / ".env").write_text("QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json\n", encoding="utf-8")
     assert find_license_file("QuellDAP", str(tmp_path)) == str(tmp_path / "licensing" / "quelldap.license.json")
     # A real environment variable wins over .env.

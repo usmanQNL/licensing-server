@@ -42,8 +42,8 @@ A JSON object with `kid`, `payload`, and `signature`.
 
 ### Where the app finds the file
 - The app's `.env` (in the project root) holds the file's location in `<APP_NAME>_LICENSE_FILE`: the application name uppercased, each run of characters other than `A-Z` and `0-9` replaced by one `_`, leading and trailing `_` removed, and `APP_` in front if it starts with a digit. `QuellDAP` gives `QUELLDAP_LICENSE_FILE`.
-- The value is a path with file name and extension, relative to the project root (an absolute path also works).
-- Lookup order: the real environment variable, then `.env`, then the default `<app name lowercased, non-alphanumerics as ->.license.json` in the project root.
+- The value is the license file's full path, with file name and extension. A relative value is resolved against the project root.
+- Lookup order: the real environment variable, then `.env`. When neither sets it: `license.json` in the current working directory.
 - A missing file means no license: paid features off, the app still runs.
 
 ## 2. Keys
