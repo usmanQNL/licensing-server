@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>License plan and gate (vanilla JS)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; }
+    .on { color: #137333; } .off { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <h1>License plan</h1>
+  <pre id="plan">Loading…</pre>
+
+  <h2>Feature gate</h2>
+  <ul id="gates"></ul>
+
+  <p><small>Browser checks can be bypassed in devtools. Use them to show or hide UI only.</small></p>
+
+  <script type="module">
+    import { licensePlan, isFeatureEnabled } from './license-checks.js';
+
+    // In your app, the license text comes from wherever you store it (an upload, localStorage, your API).
+    // The public key is baked into the app. The feature list is the table in licensing/licensing.md.
+    const [licenseText, publicKey, allFeatures] = await Promise.all([
+      fetch('../demo/license-gated.json').then((r) => r.text()),
+      fetch('../demo/demo-public.pem').then((r) => r.text()),
+      fetch('../demo/features.json').then((r) => r.json()),
+    ]);
+
+    // Licensing Plan: JSON with every detail of the installed plan.
+    const plan = await licensePlan(licenseText, publicKey, allFeatures);
+    document.getElementById('plan').textContent = JSON.stringify(plan, null, 2);
+
+    // Licensing Gate: true or false for one feature.
+    for (const feature of allFeatures) {
+      const enabled = await isFeatureEnabled(licenseText, publicKey, feature);
+      const li = document.createElement('li');
+      li.className = enabled ? 'on' : 'off';
+      li.textContent = `${feature}: ${enabled}`;
+      document.getElementById('gates').append(li);
+    }
+  </script>
+</body>
+</html>

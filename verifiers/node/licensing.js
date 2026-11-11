@@ -55,7 +55,7 @@ function verifyLicense(text, keys, mode, { featuresNeeded = [], now = Date.now()
   }
 
   let inGrace = false;
-  if (mode === 'subscription' && payload.expires_at) {
+  if ((mode === 'subscription' || mode === 'gated') && payload.expires_at) {
     const expires = parseTime(payload.expires_at);
     if (now > expires) {
       if (now <= expires + GRACE_MS) inGrace = true;

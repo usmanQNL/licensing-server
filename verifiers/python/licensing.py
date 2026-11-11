@@ -86,7 +86,7 @@ def verify_license(text: str, keys, mode: str, features_needed=(), now=None) -> 
         return LicenseResult(False, f"license is for plan '{plan}', app is '{mode}'", payload)
 
     in_grace = False
-    if mode == "subscription" and "expires_at" in payload:
+    if mode in ("subscription", "gated") and "expires_at" in payload:
         expires = _parse_time(payload["expires_at"])
         if now > expires:
             if now <= expires + GRACE_PERIOD:

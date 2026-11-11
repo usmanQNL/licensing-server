@@ -16,7 +16,7 @@ Licensing is a deterrent, not DRM. A check on the user's machine can always be b
 |---|---|
 | OpenSource | Adds an MIT `LICENSE`. No keys, no checks. |
 | Subscription | Signed license with an expiry date, checked at launch, with a 14-day grace period. |
-| Gated | Signed license listing features. Each paid feature checks its flag. |
+| Gated | Signed license listing features. Each paid feature checks its flag. Optional end date, with the same 14-day grace period. |
 
 ## Use the skill
 
@@ -190,6 +190,19 @@ node verifiers/node/example_gated.js path/to/gated-license.json path/to/license-
 ```
 
 Both verifiers return `valid`, `reason`, `payload`, and whether the license is in its grace period. They never throw for bad license input.
+
+### Plan and gate samples
+
+Ready-made **Licensing Plan** (plan details as JSON) and **Licensing Gate** (`true`/`false` for one feature) scripts are in [`samples/`](samples/README.md):
+
+- [React](samples/react/LicenseChecks.jsx)
+- [Vanilla JS](samples/vanilla-js/license-checks.js)
+- [Python](samples/python/plan.py) ([gate](samples/python/gate.py))
+- [Ruby](samples/ruby/plan.rb) ([gate](samples/ruby/gate.rb))
+- [Rust](samples/rust/src/bin/plan.rs) ([gate](samples/rust/src/bin/gate.rs))
+- [curl](samples/curl/plan.sh) ([gate](samples/curl/gate.sh))
+
+Server-side gates, which refuse a paid route with HTTP 403 and can't be bypassed from the browser: [FastAPI](samples/python/server_fastapi.py), [Express](samples/node/server_express.js) (backend for React and vanilla JS), [Rack](samples/ruby/license_gate_middleware.rb) and [axum](samples/rust/server/src/main.rs). See [Server-side gate](samples/README.md#server-side-gate-the-one-that-cant-be-bypassed).
 
 ## Online check
 

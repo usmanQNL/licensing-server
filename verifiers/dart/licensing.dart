@@ -83,7 +83,7 @@ Future<LicenseResult> verifyLicense(
   }
 
   var inGrace = false;
-  if (mode == 'subscription' && payload['expires_at'] != null) {
+  if ((mode == 'subscription' || mode == 'gated') && payload['expires_at'] != null) {
     final expires = DateTime.parse(payload['expires_at'] as String).toUtc();
     if (now.isAfter(expires)) {
       if (now.isBefore(expires.add(const Duration(days: graceDays))) ||

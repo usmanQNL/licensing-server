@@ -1,0 +1,17 @@
+{
+  "kid": "demo",
+  "payload": {
+    "v": 1,
+    "license_id": "LIC-DEMO-GATED",
+    "customer": "Demo Customer",
+    "plan": "gated",
+    "features": [
+      "sso",
+      "hourly_sync"
+    ],
+    "max_installs": 2,
+    "issued_at": "2026-11-01T00:00:00Z",
+    "expires_at": "2036-11-01T00:00:00Z"
+  },
+  "signature": "ANKQjCdAsu02LMJJinAzH7E_iiVyDe4G833D5T0AyNsEQMnvbtnVbn0ETvokVtL8Saqn7WFSK1WJ0a12rCmTDg"
+}
