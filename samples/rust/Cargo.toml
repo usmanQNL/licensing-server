@@ -1,0 +1,10 @@
+[package]
+name = "license-samples"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Reuses the verifier in verifiers/rust. In your app, depend on your copy of that crate.
+licensing = { path = "../../verifiers/rust" }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

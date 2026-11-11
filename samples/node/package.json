@@ -1,0 +1,7 @@
+{
+  "name": "license-server-gate-sample",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server_express.js" },
+  "dependencies": { "express": "^4.21.0" }
+}

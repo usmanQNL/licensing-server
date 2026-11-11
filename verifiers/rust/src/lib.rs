@@ -100,7 +100,7 @@ pub fn verify_license(text: &str, keys: Keys, mode: &str, features_needed: &[&st
     }
 
     let mut in_grace = false;
-    if mode == "subscription" {
+    if mode == "subscription" || mode == "gated" {
         if let Some(exp_text) = payload.get("expires_at").and_then(|e| e.as_str()) {
             let expires = match parse_time(exp_text) {
                 Some(d) => d,

@@ -37,7 +37,7 @@ Ask only what the chosen mode needs.
 1. **Mode.** Pick one:
    - **OpenSource:** adds an MIT `LICENSE` file. No keys, no checks. Record the mode, the app name and the `LICENSE` file in `licensing/licensing.md`, then stop.
    - **Subscription:** a signed license with an expiry date, checked at launch, with a 14-day grace period. Its license must carry the `subscription` plan.
-   - **Gated:** a signed license listing features. Each paid feature checks its flag before it runs. Its license must carry the `gated` plan.
+   - **Gated:** a signed license listing features. Each paid feature checks its flag before it runs. Its license must carry the `gated` plan. It can have an end date (`--expires-days` or `--expires-on`), with the same 14-day grace period; leave it out for a perpetual license.
 2. **Application name**, for example `QuellDAP`. Used in license folders and the license record.
 3. **Language**: Python, Node.js, Rust, or Dart/Flutter (untested).
 4. **Licensing server.** Does the user already run one? If yes, get its endpoint URL and its root public key (or its key list URL), and skip Step 2. If no, deploy this repo's server in Step 2.
@@ -140,7 +140,7 @@ Trust a key list (recommended) or one key. Use `load_trusted_keys` (Python) or `
 2. Rejects unknown `v` values.
 3. Checks the plan matches the chosen mode.
 4. For Subscription: an expired license gets a 14-day grace period with a warning. After that, paid features turn off.
-5. For Gated: checks the feature is in `features` before the feature runs.
+5. For Gated: checks the feature is in `features` before the feature runs. A gated license with `expires_at` expires like a subscription, with the same 14-day grace period.
 6. Never blocks sign-in. A failed check only turns paid features off.
 
 ### Gated features: how to wrap them

@@ -1,0 +1,14 @@
+{
+  "kid": "demo",
+  "payload": {
+    "v": 1,
+    "license_id": "LIC-DEMO-SUB",
+    "customer": "Demo Customer",
+    "plan": "subscription",
+    "features": [],
+    "max_installs": 1,
+    "issued_at": "2026-11-01T00:00:00Z",
+    "expires_at": "2036-11-01T00:00:00Z"
+  },
+  "signature": "lZXJ_-DMixarY2mnkkjshHIciO8iNLg65A6wXmLBPzZWII7__fG159PwpQvrwqoQB_qGP8UxIm0Zsi_4QCfQDw"
+}
