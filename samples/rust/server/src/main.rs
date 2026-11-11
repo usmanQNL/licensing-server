@@ -6,7 +6,9 @@
 //!
 //! Run:  cd samples/rust/server && cargo run
 //! Settings (environment variables, defaults are the demo files):
-//!   LICENSE_FILE, LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT
+//!   APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (from the environment or ./.env, relative to the
+//!   folder you start the server in), LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT.
+//!   For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json from .env.
 use axum::{
     extract::{Request, State},
     http::StatusCode,
@@ -59,12 +61,36 @@ async fn get_plan(State(cfg): State<Arc<Config>>) -> Json<Value> {
     Json(cfg.current_plan())
 }
 
+/// The project's .env holds the license location as <APP_NAME>_LICENSE_FILE (relative to the project root).
+/// A real environment variable wins. None: use the demo license. The verifier crate
+/// (verifiers/rust) has the same lookup as `find_license_file`.
+fn license_file_setting() -> Option<String> {
+    let app = env::var("APP_NAME").unwrap_or_else(|_| "Demo".into());
+    let mut stem: String = app.to_uppercase().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).collect();
+    while stem.contains("__") {
+        stem = stem.replace("__", "_");
+    }
+    let mut stem = stem.trim_matches('_').to_string();
+    if stem.starts_with(|c: char| c.is_ascii_digit()) {
+        stem = format!("APP_{stem}");
+    }
+    let var = format!("{stem}_LICENSE_FILE");
+    env::var(&var).ok().filter(|v| !v.is_empty()).or_else(|| {
+        let text = fs::read_to_string(".env").ok()?;
+        text.lines().find_map(|line| {
+            let (k, v) = line.trim().split_once('=')?;
+            let k = k.trim();
+            (k.strip_prefix("export ").map(str::trim).unwrap_or(k) == var).then(|| v.trim().trim_matches(|c| c == '"' || c == '\'').to_string())
+        })
+    })
+}
+
 #[tokio::main]
 async fn main() {
     let demo = |f: &str| format!("{}/../../demo/{f}", env!("CARGO_MANIFEST_DIR"));
     let setting = |name: &str, file: &str| env::var(name).unwrap_or_else(|_| demo(file));
     let cfg = Arc::new(Config {
-        license_file: setting("LICENSE_FILE", "license-gated.json"),
+        license_file: license_file_setting().unwrap_or_else(|| demo("license-gated.json")),
         public_key: fs::read_to_string(setting("LICENSE_PUBLIC_KEY", "demo-public.pem")).expect("read public key"),
         all_features: serde_json::from_str(&fs::read_to_string(setting("LICENSE_FEATURES", "features.json")).expect("read features"))
             .expect("features.json must be a list"),

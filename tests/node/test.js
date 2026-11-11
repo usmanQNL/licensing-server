@@ -28,3 +28,20 @@ test('online replies', () => {
     if (reply.payload.status in expected) assert.strictEqual(r.active, expected[reply.payload.status], name);
   }
 });
+
+test('license file location from <APP>_LICENSE_FILE', () => {
+  const os = require('os');
+  const { licenseFileEnvVar, defaultLicenseFile, findLicenseFile } = require('../../verifiers/node/licensing');
+  assert.strictEqual(licenseFileEnvVar('QuellDAP'), 'QUELLDAP_LICENSE_FILE');
+  assert.strictEqual(licenseFileEnvVar('my app-2.0'), 'MY_APP_2_0_LICENSE_FILE');
+  assert.strictEqual(licenseFileEnvVar('3d tool'), 'APP_3D_TOOL_LICENSE_FILE');
+  assert.strictEqual(defaultLicenseFile('My App'), 'my-app.license.json');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lic-'));
+  delete process.env.QUELLDAP_LICENSE_FILE;
+  assert.strictEqual(findLicenseFile('QuellDAP', dir), path.join(dir, 'quelldap.license.json'));
+  fs.writeFileSync(path.join(dir, '.env'), 'QUELLDAP_LICENSE_FILE="licensing/quelldap.license.json"\n');
+  assert.strictEqual(findLicenseFile('QuellDAP', dir), path.join(dir, 'licensing', 'quelldap.license.json'));
+  process.env.QUELLDAP_LICENSE_FILE = 'other.license.json';
+  assert.strictEqual(findLicenseFile('QuellDAP', dir), path.join(dir, 'other.license.json'));
+  delete process.env.QUELLDAP_LICENSE_FILE;
+});

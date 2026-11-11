@@ -39,7 +39,7 @@ bash samples/curl/call-server.sh http://localhost:8000 /reports/pdf    # HTTP 40
 bash samples/curl/call-server.sh http://localhost:8000 /auth/sso       # HTTP 200
 ```
 
-Every server reads `LICENSE_FILE`, `LICENSE_PUBLIC_KEY` and `LICENSE_FEATURES` from the environment, and uses the demo files when they're unset. It re-reads and re-verifies the license on each gated request, so a renewed license file or an expiry takes effect without a restart. A missing or broken license file means every gated route answers 403. A refused request gets:
+Every server finds the license through `APP_NAME` (default `Demo`) and `<APP_NAME>_LICENSE_FILE`, read from the environment or from `.env` in the folder you start it in, with the path relative to that folder. For example, `APP_NAME=QuellDAP` with `QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json` in `.env`. It reads `LICENSE_PUBLIC_KEY` and `LICENSE_FEATURES` from the environment, and uses the demo files for anything unset. It re-reads and re-verifies the license on each gated request, so a renewed license file or an expiry takes effect without a restart. A missing or broken license file means every gated route answers 403. A refused request gets:
 
 ```json
 { "error": "feature_not_licensed", "feature": "export_pdf", "reason": "the license does not include this feature" }

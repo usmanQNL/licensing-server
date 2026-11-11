@@ -103,3 +103,38 @@ Future<LicenseResult> verifyLicense(
 
   return LicenseResult(true, inGrace ? 'in grace period' : 'valid', payload, inGrace);
 }
+
+// ---- Locating the license file (.env: <APP_NAME>_LICENSE_FILE) ----
+// Pure string helpers, so they work in Flutter too. Read the variable from your app's .env
+// (for example with flutter_dotenv) or Platform.environment, then resolve it against the app root.
+
+/// Name of the .env variable that holds the license file's location, e.g. 'QuellDAP' -> 'QUELLDAP_LICENSE_FILE'.
+String licenseFileEnvVar(String appName) {
+  var stem = appName.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '');
+  if (stem.isEmpty) stem = 'APP';
+  if (RegExp(r'^[0-9]').hasMatch(stem)) stem = 'APP_$stem';
+  return '${stem}_LICENSE_FILE';
+}
+
+/// Default location, relative to the project root: '<app name, lowercase>.license.json'.
+String defaultLicenseFile(String appName) {
+  final stem = appName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
+  return '${stem.isEmpty ? 'app' : stem}.license.json';
+}
+
+/// KEY=VALUE pairs from the text of a .env file. Comments and blank lines are skipped.
+Map<String, String> parseDotenv(String text) {
+  final values = <String, String>{};
+  for (var line in const LineSplitter().convert(text)) {
+    line = line.trim();
+    if (line.isEmpty || line.startsWith('#') || !line.contains('=')) continue;
+    var key = line.substring(0, line.indexOf('=')).trim();
+    if (key.startsWith('export ')) key = key.substring(7).trim();
+    var value = line.substring(line.indexOf('=') + 1).trim();
+    if (value.length >= 2 && value[0] == value[value.length - 1] && (value[0] == '"' || value[0] == "'")) {
+      value = value.substring(1, value.length - 1);
+    }
+    values[key] = value;
+  }
+  return values;
+}

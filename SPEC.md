@@ -40,6 +40,12 @@ A JSON object with `kid`, `payload`, and `signature`.
 - `signature` is base64url without padding.
 - Verifiers reject any file whose `v` they do not understand.
 
+### Where the app finds the file
+- The app's `.env` (in the project root) holds the file's location in `<APP_NAME>_LICENSE_FILE`: the application name uppercased, each run of characters other than `A-Z` and `0-9` replaced by one `_`, leading and trailing `_` removed, and `APP_` in front if it starts with a digit. `QuellDAP` gives `QUELLDAP_LICENSE_FILE`.
+- The value is a path with file name and extension, relative to the project root (an absolute path also works).
+- Lookup order: the real environment variable, then `.env`, then the default `<app name lowercased, non-alphanumerics as ->.license.json` in the project root.
+- A missing file means no license: paid features off, the app still runs.
+
 ## 2. Keys
 
 - One Ed25519 key pair per product, identified by a `kid`.

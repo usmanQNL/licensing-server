@@ -117,12 +117,32 @@ Only the root key needs an app update if it is ever compromised.
 
 Embed the public key in your app. Never embed the private key. Use the verifier for your language, with the public key PEM.
 
+### Where the app finds the license file
+
+The app reads the license file's location from its `.env` file, in a variable named after the app: `<APP_NAME>_LICENSE_FILE`. The name is the app name in uppercase with other characters turned into `_`, so `QuellDAP` uses `QUELLDAP_LICENSE_FILE`. The value is the relative path, file name and extension, relative to the project root:
+
+```bash
+# .env (gitignored; the skill creates it if the project has none)
+QUELLDAP_LICENSE_FILE=licensing/quelldap.license.json
+```
+
+The skill also adds the line to `.env.example` and makes sure `.env` and `*.license.json` are in `.gitignore`. A real environment variable overrides `.env`. With neither set, the app looks for `<app name in lowercase>.license.json` in the project root. A missing file only turns paid features off.
+
+Every verifier has the lookup:
+
+| Language | Call |
+|---|---|
+| Python | `find_license_file("QuellDAP", project_root=".")` |
+| Node.js | `findLicenseFile('QuellDAP', '.')` |
+| Rust | `find_license_file("QuellDAP", Path::new("."))` |
+| Dart | `licenseFileEnvVar('QuellDAP')` and `parseDotenv(text)` (read `.env` your own way, e.g. with `flutter_dotenv`) |
+
 ### Python
 
 ```python
-from licensing import verify_license
+from licensing import find_license_file, verify_license
 
-text = open("license.json", encoding="utf-8").read()
+text = open(find_license_file("QuellDAP"), encoding="utf-8").read()  # QUELLDAP_LICENSE_FILE in .env
 public_key = open("license-public.pem", encoding="utf-8").read()
 
 result = verify_license(text, public_key, mode="subscription")
@@ -136,6 +156,7 @@ Copy `verifiers/python/licensing.py` into your project. It needs `cryptography`.
 
 ```bash
 python verifiers/python/example.py path/to/license.json path/to/license-public.pem
+python verifiers/python/example.py --app QuellDAP path/to/license-public.pem   # path from QUELLDAP_LICENSE_FILE in ./.env
 ```
 
 For a Gated license, use `mode="gated"` and pass the feature the code is about to use. See `verifiers/python/example_gated.py`:
@@ -160,9 +181,9 @@ python verifiers/python/example_gated.py path/to/gated-license.json path/to/lice
 
 ```js
 const fs = require('fs');
-const { verifyLicense } = require('./licensing');
+const { verifyLicense, findLicenseFile } = require('./licensing');
 
-const text = fs.readFileSync('license.json', 'utf8');
+const text = fs.readFileSync(findLicenseFile('QuellDAP'), 'utf8'); // QUELLDAP_LICENSE_FILE in .env
 const publicKey = fs.readFileSync('license-public.pem', 'utf8');
 
 const result = verifyLicense(text, publicKey, 'subscription');
@@ -177,6 +198,7 @@ Copy `verifiers/node/licensing.js` into your project. It uses only Node's built-
 
 ```bash
 node verifiers/node/example.js path/to/license.json path/to/license-public.pem
+node verifiers/node/example.js --app QuellDAP path/to/license-public.pem   # path from QUELLDAP_LICENSE_FILE in ./.env
 ```
 
 For a Gated license, use `'gated'` and pass the feature. See `verifiers/node/example_gated.js`:

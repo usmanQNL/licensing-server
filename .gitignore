@@ -21,6 +21,7 @@ gcp-sa.json
 
 # Issued license files and license store exports
 licenses/
+*.license.json
 license-data.json
 dev-data.json
 
