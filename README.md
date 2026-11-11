@@ -488,4 +488,16 @@ Run the tests from the repo root:
 
 The shared cases in `verifiers/cases.json` must pass in every verifier. The online replies in `verifiers/online-replies.json` (checked with `verifiers/online-public.pem`) cover the reply check. Python, Node, and Rust pass them. Dart is untested.
 
-The repo includes
+The repo includes a GitHub Actions workflow (`.github/workflows/tests.yml`) that runs the Python tests on every push and pull request.
+
+## Contributing
+
+Contributions are welcome. Every commit must be signed off under the [Developer Certificate of Origin](DCO), which `git commit -s` does for you. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## License
+
+Copyright 2026 Usman Ahmad.
+
+Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.
+
+The skill's OpenSource mode is separate: it adds an MIT `LICENSE` to the projects you apply it to, and does not change this repo's license.
