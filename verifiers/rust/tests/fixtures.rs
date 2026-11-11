@@ -67,3 +67,23 @@ fn evaluate_blocks_on_revoked_reply() {
     // No reply: the local license decides.
     assert!(evaluate(full, &keys, "full", "X", None, &[], now, None).valid);
 }
+
+#[test]
+fn license_file_location() {
+    use licensing::{find_license_file, license_file_env_var, DEFAULT_LICENSE_FILE};
+    assert_eq!(license_file_env_var("QuellDAP"), "QUELLDAP_LICENSE_FILE");
+    assert_eq!(license_file_env_var("my app-2.0"), "MY_APP_2_0_LICENSE_FILE");
+    assert_eq!(license_file_env_var("3d tool"), "APP_3D_TOOL_LICENSE_FILE");
+    assert_eq!(DEFAULT_LICENSE_FILE, "license.json");
+    let dir = std::env::temp_dir().join(format!("lic-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    // A name no other test or shell sets, so the environment can't interfere.
+    let app = "RustEnvTestApp";
+    assert_eq!(find_license_file(app, &dir), std::env::current_dir().unwrap().join("license.json"));
+    let full = dir.join("elsewhere").join("q.license.json");
+    std::fs::write(dir.join(".env"), format!("RUSTENVTESTAPP_LICENSE_FILE={}\n", full.display())).unwrap();
+    assert_eq!(find_license_file(app, &dir), full);
+    std::fs::write(dir.join(".env"), "# c\nnot a pair\nRUSTENVTESTAPP_LICENSE_FILE='licensing/a.license.json'\n").unwrap();
+    assert_eq!(find_license_file(app, &dir), dir.join("licensing/a.license.json"));
+    std::fs::remove_dir_all(&dir).ok();
+}

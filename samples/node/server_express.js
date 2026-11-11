@@ -7,16 +7,26 @@
 //
 // Run:  cd samples/node && npm install && npm start      (Node 20+)
 // Settings (environment variables, defaults are the demo files):
-//   LICENSE_FILE, LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT
+//   APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (the license's full path, from the environment or
+//   ./.env; unset: ./license.json, then the demo license), LICENSE_PUBLIC_KEY, LICENSE_FEATURES, PORT.
+//   For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json from .env.
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 // The Web Crypto checks also run on Node 20+. verifiers/node/licensing.js works too.
 import { licensePlan } from '../vanilla-js/license-checks.js';
 
 const demo = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'demo');
-const LICENSE_FILE = process.env.LICENSE_FILE || path.join(demo, 'license-gated.json');
+const { licenseFileEnvVar, readDotenv } = createRequire(import.meta.url)('../../verifiers/node/licensing.js');
+
+// The project's .env holds the license's full path as <APP_NAME>_LICENSE_FILE. A real environment variable
+// wins. Unset: license.json in the working directory, or the demo license if there is none.
+const licenseVar = licenseFileEnvVar(process.env.APP_NAME || 'Demo');
+const licenseValue = process.env[licenseVar] || readDotenv('.env')[licenseVar];
+const LICENSE_FILE = licenseValue ? path.resolve(licenseValue)
+  : fs.existsSync('license.json') ? path.resolve('license.json') : path.join(demo, 'license-gated.json');
 const PUBLIC_KEY = fs.readFileSync(process.env.LICENSE_PUBLIC_KEY || path.join(demo, 'demo-public.pem'), 'utf8');
 const ALL_FEATURES = JSON.parse(fs.readFileSync(process.env.LICENSE_FEATURES || path.join(demo, 'features.json'), 'utf8'));
 

@@ -9,7 +9,9 @@ Run (needs fastapi and uvicorn, already in requirements.txt):
     cd samples/python
     uvicorn server_fastapi:app --port 8000
 Settings (environment variables, defaults are the demo files):
-    LICENSE_FILE, LICENSE_PUBLIC_KEY, LICENSE_FEATURES
+    APP_NAME (default Demo) and <APP_NAME>_LICENSE_FILE (the license's full path, from the environment
+    or ./.env; unset: ./license.json, then the demo license), LICENSE_PUBLIC_KEY, LICENSE_FEATURES
+    For example APP_NAME=QuellDAP reads QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json from .env.
 """
 import json
 import os
@@ -17,9 +19,21 @@ import os
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from licensing import license_file_env_var, read_dotenv
 from plan import DEMO, _read, license_plan
 
-LICENSE_FILE = os.environ.get("LICENSE_FILE", os.path.join(DEMO, "license-gated.json"))
+
+def _license_file():
+    # The project's .env holds the license's full path as <APP_NAME>_LICENSE_FILE. A real environment
+    # variable wins. Unset: license.json in the working directory, or the demo license if there is none.
+    var = license_file_env_var(os.environ.get("APP_NAME", "Demo"))
+    value = os.environ.get(var) or read_dotenv(".env").get(var)
+    if value:
+        return os.path.abspath(value)
+    return os.path.abspath("license.json") if os.path.exists("license.json") else os.path.join(DEMO, "license-gated.json")
+
+
+LICENSE_FILE = _license_file()
 PUBLIC_KEY = _read(os.environ.get("LICENSE_PUBLIC_KEY", os.path.join(DEMO, "demo-public.pem")))
 ALL_FEATURES = json.loads(_read(os.environ.get("LICENSE_FEATURES", os.path.join(DEMO, "features.json"))))
 

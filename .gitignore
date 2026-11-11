@@ -21,6 +21,8 @@ gcp-sa.json
 
 # Issued license files and license store exports
 licenses/
+license.json
+*.license.json
 license-data.json
 dev-data.json
 
@@ -36,5 +38,7 @@ verifiers/rust/target/
 samples/rust/target/
 samples/rust/server/target/
 samples/**/Cargo.lock
+verifiers/rust/Cargo.lock
+samples/node/package-lock.json
 node_modules/
 .dart_tool/

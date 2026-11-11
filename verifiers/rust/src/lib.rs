@@ -208,3 +208,63 @@ pub fn evaluate(text: &str, keys: Keys, mode: &str, license_id: &str, reply: Opt
     }
     local
 }
+
+// ---- Locating the license file (.env: <APP_NAME>_LICENSE_FILE) ----
+
+/// Name of the .env variable that holds the license file's location, e.g. "QuellDAP" -> "QUELLDAP_LICENSE_FILE".
+pub fn license_file_env_var(app_name: &str) -> String {
+    let mut stem = String::new();
+    for c in app_name.to_uppercase().chars() {
+        if c.is_ascii_alphanumeric() {
+            stem.push(c);
+        } else if !stem.is_empty() && !stem.ends_with('_') {
+            stem.push('_');
+        }
+    }
+    let mut stem = stem.trim_end_matches('_').to_string();
+    if stem.is_empty() {
+        stem = "APP".into();
+    }
+    if stem.starts_with(|c: char| c.is_ascii_digit()) {
+        stem = format!("APP_{stem}");
+    }
+    stem + "_LICENSE_FILE"
+}
+
+/// Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory.
+pub const DEFAULT_LICENSE_FILE: &str = "license.json";
+
+/// Value of `key` in a .env file (KEY=VALUE lines). None when the file or key is missing.
+pub fn read_dotenv_value(path: &std::path::Path, key: &str) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some((k, v)) = line.split_once('=') else { continue };
+        let k = k.trim();
+        let k = k.strip_prefix("export ").map(str::trim).unwrap_or(k);
+        if k == key {
+            let v = v.trim();
+            let unquoted = if v.len() >= 2 && (v.starts_with('"') && v.ends_with('"') || v.starts_with('\'') && v.ends_with('\'')) { &v[1..v.len() - 1] } else { v };
+            return Some(unquoted.to_string());
+        }
+    }
+    None
+}
+
+/// Path of the license file. <APP>_LICENSE_FILE holds the full path; it is read from the environment
+/// first, then from <project_root>/.env. A relative value is joined to `project_root`. When the variable
+/// is unset: license.json in the current working directory. The file may not exist: treat that as no license.
+pub fn find_license_file(app_name: &str, project_root: &std::path::Path) -> std::path::PathBuf {
+    let var = license_file_env_var(app_name);
+    let value = std::env::var(&var)
+        .ok()
+        .filter(|v| !v.is_empty())
+        .or_else(|| read_dotenv_value(&project_root.join(".env"), &var).filter(|v| !v.is_empty()));
+    match value {
+        Some(v) => project_root.join(v), // join keeps an absolute value as is
+        None => std::env::current_dir().unwrap_or_default().join(DEFAULT_LICENSE_FILE),
+    }
+}

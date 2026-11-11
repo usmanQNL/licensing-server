@@ -162,4 +162,46 @@ async function loadTrustedKeys(rootPem, { cachePath, endpoint, timeoutMs = 5000 
   throw new Error('no trusted key list: the server is unreachable and nothing is cached');
 }
 
-module.exports = { verifyLicense, checkOnlineReply, evaluate, canonical, verifyKeyList, loadTrustedKeys };
+// ---- Locating the license file (.env: <APP_NAME>_LICENSE_FILE) ----
+
+/** Name of the .env variable that holds the license file's location, e.g. 'QuellDAP' -> 'QUELLDAP_LICENSE_FILE'. */
+function licenseFileEnvVar(appName) {
+  let stem = String(appName).toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'APP';
+  if (/^[0-9]/.test(stem)) stem = 'APP_' + stem;
+  return stem + '_LICENSE_FILE';
+}
+
+/** Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory. */
+const DEFAULT_LICENSE_FILE = 'license.json';
+
+/** Read KEY=VALUE lines from a .env file. Missing file: {}. */
+function readDotenv(file) {
+  const fs = require('fs');
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return {}; }
+  const values = {};
+  for (let line of text.split(/\r?\n/)) {
+    line = line.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    let key = line.slice(0, line.indexOf('=')).trim();
+    if (key.startsWith('export ')) key = key.slice(7).trim();
+    let value = line.slice(line.indexOf('=') + 1).trim();
+    if (value.length >= 2 && value[0] === value[value.length - 1] && (value[0] === '"' || value[0] === "'")) value = value.slice(1, -1);
+    values[key] = value;
+  }
+  return values;
+}
+
+/** Absolute path of the license file. <APP>_LICENSE_FILE holds the full path; it is read from the
+ *  environment first, then from <projectRoot>/.env. A relative value resolves against projectRoot.
+ *  When the variable is unset: license.json in the current working directory.
+ *  The file may not exist: treat that as no license. */
+function findLicenseFile(appName, projectRoot = '.') {
+  const path = require('path');
+  const name = licenseFileEnvVar(appName);
+  const value = process.env[name] || readDotenv(path.join(projectRoot, '.env'))[name];
+  return value ? path.resolve(projectRoot, value) : path.resolve(process.cwd(), DEFAULT_LICENSE_FILE);
+}
+
+module.exports = { verifyLicense, checkOnlineReply, evaluate, canonical, verifyKeyList, loadTrustedKeys,
+  licenseFileEnvVar, DEFAULT_LICENSE_FILE, readDotenv, findLicenseFile };

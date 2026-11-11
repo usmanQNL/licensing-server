@@ -238,3 +238,55 @@ def load_trusted_keys(root_pem: str, cache_path=None, endpoint=None, timeout=5) 
     if cached_text is not None:
         return verify_key_list(cached_text, root_pem)
     raise ValueError("no trusted key list: the server is unreachable and nothing is cached")
+
+
+# ---- Locating the license file (.env: <APP_NAME>_LICENSE_FILE) -------------
+
+def license_file_env_var(app_name: str) -> str:
+    """Name of the .env variable that holds the license file's location, for example
+    "QuellDAP" -> "QUELLDAP_LICENSE_FILE". Uppercase; every run of other characters becomes "_"."""
+    import re
+    stem = re.sub(r"[^A-Z0-9]+", "_", app_name.upper()).strip("_") or "APP"
+    if stem[0].isdigit():
+        stem = "APP_" + stem
+    return stem + "_LICENSE_FILE"
+
+
+# Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory.
+DEFAULT_LICENSE_FILE = "license.json"
+
+
+def read_dotenv(path: str) -> dict:
+    """Read KEY=VALUE lines from a .env file. Missing file: {}. Comments and blank lines are skipped."""
+    values = {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return values
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key.startswith("export "):
+            key = key[len("export "):].strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def find_license_file(app_name: str, project_root: str = ".") -> str:
+    """Absolute path of the license file. <APP>_LICENSE_FILE holds the full path; it is read from the
+    environment first, then from <project_root>/.env. A relative value is resolved against project_root.
+    When the variable is unset: license.json in the current working directory.
+    The file may not exist: treat that as no license."""
+    import os
+    var = license_file_env_var(app_name)
+    value = os.environ.get(var) or read_dotenv(os.path.join(project_root, ".env")).get(var)
+    if value:
+        return os.path.abspath(os.path.join(project_root, value))
+    return os.path.abspath(os.path.join(os.getcwd(), DEFAULT_LICENSE_FILE))

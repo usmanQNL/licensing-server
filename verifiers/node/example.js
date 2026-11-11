@@ -1,10 +1,13 @@
 // Example: check a license file in a Node.js app.
 // Run:  node example.js path/to/LIC-....license.json path/to/public.pem
+//   or: node example.js --app QuellDAP path/to/public.pem   (finds the license through QUELLDAP_LICENSE_FILE in the environment or ./.env)
 'use strict';
 const fs = require('fs');
-const { verifyLicense } = require('./licensing');
+const { verifyLicense, findLicenseFile } = require('./licensing');
 
-const [licensePath, publicKeyPath] = process.argv.slice(2);
+const args = process.argv.slice(2);
+// --app NAME: the app's .env holds the license location, <APP>_LICENSE_FILE=/full/path/license.json
+const [licensePath, publicKeyPath] = args[0] === '--app' ? [findLicenseFile(args[1], '.'), args[2]] : args;
 const text = fs.readFileSync(licensePath, 'utf8');
 const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
 

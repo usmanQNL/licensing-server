@@ -38,7 +38,7 @@ Ask only what the chosen mode needs.
    - **OpenSource:** adds an MIT `LICENSE` file. No keys, no checks. Record the mode, the app name and the `LICENSE` file in `licensing/licensing.md`, then stop.
    - **Subscription:** a signed license with an expiry date, checked at launch, with a 14-day grace period. Its license must carry the `subscription` plan.
    - **Gated:** a signed license listing features. Each paid feature checks its flag before it runs. Its license must carry the `gated` plan. It can have an end date (`--expires-days` or `--expires-on`), with the same 14-day grace period; leave it out for a perpetual license.
-2. **Application name**, for example `QuellDAP`. Used in license folders and the license record.
+2. **Application name**, for example `QuellDAP`. Used in license folders, the license record, and the `.env` variable that holds the license file's location (`QUELLDAP_LICENSE_FILE`, see Step 6).
 3. **Language**: Python, Node.js, Rust, or Dart/Flutter (untested).
 4. **Licensing server.** Does the user already run one? If yes, get its endpoint URL and its root public key (or its key list URL), and skip Step 2. If no, deploy this repo's server in Step 2.
 5. **Online check?** On by default. Users can turn it off. If on, the endpoint URL from question 4.
@@ -123,7 +123,7 @@ Each issue needs exactly one key source: `--key-secret NAME --project PROJECT` (
 
 The license is a JSON file with `kid`, `payload` and `signature`. The application name is not in the file. The output goes to `licenses/<application>/<license_id>.license.json` by default, or to `--out PATH`.
 
-**Delivering the file.** Send the `.license.json` file to the customer through your normal channel, and tell them where the app expects it. Never commit `licenses/` to git.
+**Delivering the file.** Send the `.license.json` file to the customer through your normal channel, and tell them where the app expects it: the path in `<APP_NAME>_LICENSE_FILE` in the app's `.env` (Step 6), or tell them to set that variable to wherever they put the file. Never commit `licenses/` or `*.license.json` to git.
 
 **Record:** the `issue_license.py` command as a reusable template (with placeholders for the customer and contact details), the output folder, where the app expects the license file, and one row per issued license (license ID, plan, features, expiry). Never the customer's email or phone.
 
@@ -134,6 +134,24 @@ Copy the verifier for the chosen language into the project:
 - Node.js: `verifiers/node/licensing.js`
 - Rust: `verifiers/rust/`
 - Dart/Flutter: `verifiers/dart/licensing.dart` (untested. Run `dart test` against `verifiers/cases.json` first.)
+
+### Where the app finds the license file (`.env`)
+
+The license file's location lives in the project's `.env` file, in one variable named after the app:
+
+- **Name:** `<APP_NAME>_LICENSE_FILE`. The application name from Step 1 in uppercase, with every run of other characters turned into `_`. `QuellDAP` gives `QUELLDAP_LICENSE_FILE`, `My App` gives `MY_APP_LICENSE_FILE`. A name that starts with a digit gets `APP_` in front.
+- **Value:** the full path of the license file, with its file name and extension, for example `QUELLDAP_LICENSE_FILE=C:/apps/quelldap/license.json` or `QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json`. Use forward slashes. A relative path still works and is resolved against the project root. If the user doesn't say where, use the full path of `license.json` in the project root.
+- **Fallback:** when the variable is not set (not in the environment and not in `.env`), the app looks for `license.json` in the current working directory.
+
+Do this in the target project:
+
+1. If the project root has no `.env`, create it. Add the variable (or update it if it is already there). Don't touch other lines.
+2. Make sure `.env` is in `.gitignore`. Also add `license.json` and `*.license.json` (or the license file's folder) so a license file is never committed.
+3. Add the same line to `.env.example` (create it if missing), so anyone setting up the project sees the variable. `.env.example` is committed.
+4. Load the license from that variable at startup. Every verifier has the lookup: `find_license_file(app_name, project_root)` in Python and Rust, `findLicenseFile(appName, projectRoot)` in Node, and `licenseFileEnvVar` with `parseDotenv` in Dart. It reads the variable from the real environment first, then from `<project root>/.env`. When neither has it, it returns `license.json` in the current working directory. A relative value resolves against the project root.
+5. A missing or unreadable license file is not an error: paid features stay off, and the app still runs.
+
+A real environment variable overrides `.env`, so an installed app or a server can point at a license somewhere else without editing the file.
 
 Trust a key list (recommended) or one key. Use `load_trusted_keys` (Python) or `loadTrustedKeys` (Node) with the root public key, the server URL and a cache path. Rust and Dart take a fixed `{kid: PEM}` map. Each verifier:
 1. Picks the key for the file's `kid` and verifies the signature. Rejects anything that fails.
@@ -156,9 +174,10 @@ For Gated mode, do this in the project:
 
    ```python
    import json
-   from licensing import load_trusted_keys, evaluate
+   from licensing import load_trusted_keys, evaluate, find_license_file
 
-   license_text = open(LICENSE_PATH, encoding="utf-8").read()          # the customer's .license.json
+   license_path = find_license_file("QuellDAP", project_root=APP_ROOT)  # QUELLDAP_LICENSE_FILE from .env
+   license_text = open(license_path, encoding="utf-8").read()            # the customer's .license.json
    lic_id = json.loads(license_text)["payload"]["license_id"]
    keys = load_trusted_keys(ROOT_PUBLIC_PEM, cache_path=CACHE_PATH, endpoint=SERVER_URL)
 
@@ -173,7 +192,7 @@ For Gated mode, do this in the project:
 
 Always test a valid license, an expired one, a tampered one, a wrong plan and a missing feature. Use the shared cases in `verifiers/cases.json`.
 
-**Record:** the verifier's path in the project, where the app loads the license at startup, the root public key path, the key list cache path, and for Gated the final guarded code for each feature ID.
+**Record:** the verifier's path in the project, the `<APP_NAME>_LICENSE_FILE` variable name and its value, that `.env` is gitignored and `.env.example` has the line, where the app loads the license at startup, the root public key path, the key list cache path, and for Gated the final guarded code for each feature ID.
 
 ## Step 7: online check (optional, on by default)
 
@@ -204,6 +223,7 @@ The shared cases in `verifiers/cases.json` and the online replies in `verifiers/
 - Licensing is a deterrent, not DRM. A check on the user's machine can always be bypassed. Say so in the project docs.
 - Use only the mode the user chose. Don't add checks they didn't ask for.
 - App stores may require in-app purchase for paid digital features on iOS and Android. Check before adding licensing to a mobile app.
+- The license file's location goes in `.env` as `<APP_NAME>_LICENSE_FILE`, never hard-coded. Keep `.env` and license files out of git.
 - Keep `licensing/licensing.md` current. It is the single source of truth for this project's licensing, and the next agent starts from it.
 
 ## Template: `licensing/licensing.md`
@@ -276,7 +296,9 @@ Key list files: `keys.json` at <path>, `keylist.json` at <path> (and on the serv
 | <path to verifier> | license verifier |
 | <path to root-public.pem> | trusted root public key shipped in the app |
 | <app settings file / key> | server endpoint and online-check setting |
-| `.gitignore` | ignores `keys/`, `licenses/`, private key patterns |
+| `.env` | `<APP_NAME>_LICENSE_FILE=<full/path/license.json>` (gitignored, created if missing) |
+| `.env.example` | the same variable, committed, so setup shows it |
+| `.gitignore` | ignores `.env`, `license.json`, `*.license.json`, `keys/`, `licenses/`, private key patterns |
 | <AGENTS.md / other agent files> | pointer to this record |
 | <...> | <...> |
 
@@ -309,7 +331,8 @@ python license_admin.py <list / show / revoke / reinstate> <...>
 |---|---|
 | Verifier path | <path> |
 | Where the license is loaded at startup | <file:function> |
-| Where the app expects the license file | <path on the user's machine> |
+| License file variable (in `.env`) | <QUELLDAP_LICENSE_FILE> |
+| License file location (its value, a full path) | <C:/apps/quelldap/license.json> |
 | Key list cache path | <path> |
 
 ## Online check
