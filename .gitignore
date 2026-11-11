@@ -38,5 +38,7 @@ verifiers/rust/target/
 samples/rust/target/
 samples/rust/server/target/
 samples/**/Cargo.lock
+verifiers/rust/Cargo.lock
+samples/node/package-lock.json
 node_modules/
 .dart_tool/
