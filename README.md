@@ -15,9 +15,8 @@ Licensing is a deterrent, not DRM. A check on the user's machine can always be b
 | Mode | What it does |
 |---|---|
 | OpenSource | Adds an MIT `LICENSE`. No keys, no checks. |
-| Subscription | Signed license with an expiry date, checked at startup. |
+| Subscription | Signed license with an expiry date, checked at launch, with a 14-day grace period. |
 | Gated | Signed license listing features. Each paid feature checks its flag. |
-| Full | Signed license with an expiry date, checked at launch, with a 14-day grace period. |
 
 ## Use the skill
 
@@ -52,7 +51,7 @@ Issue a license. This reads the private key from Secret Manager, so it never sit
 ```bash
 python issue_license.py --help
 
-python issue_license.py --customer "Example Ltd" --application QuellDAP --plan full \
+python issue_license.py --customer "Example Ltd" --application QuellDAP --plan subscription \
   --client-email contact@example.com --client-phone "+44 20 0000 0000" \
   --features sso,hourly_sync --expires-days 365 \
   --key-secret license-signing-key --project YOUR_PROJECT \
@@ -86,20 +85,19 @@ If a key is compromised, remove it from the app in an emergency release and reis
 Apps trust a signed list of signing keys, so rotating a key needs no app update. Only the root key has to be built into the app. Run every step below on your own PC.
 
 **Step 1: create the root key (once).**
-`python sign_keylist.py init-root --out root_private.pem`
+`python sign_keylist.py init-root --out keys/root_private.pem`
 This writes two files:
-- `root_private.pem`: the root private key. Keep it offline and out of git. If you lose it, apps need an update to trust a new root.
+- `keys/root_private.pem`: the root private key. Keep it offline and out of git. If you lose it, apps need an update to trust a new root.
 - `root-public.pem`: the root public key. Ship it inside the app.
 
 **Step 2: add your signing key's public half to `keys.json`.**
-Get the k1 private key from Secret Manager (it's never committed):
-`gcloud secrets versions access latest --secret license-signing-key --project YOUR_PROJECT > private.pem`
-Then add its public half. No private key is copied:
-`python sign_keylist.py make-keys --kid k1 --key-file private.pem --out keys.json`
+Get the k1 public key list without writing the private key to disk. Run this in the same shell as the Secret Manager fetch, so the key is never saved to a file:
+`gcloud secrets versions access latest --secret license-signing-key --project YOUR_PROJECT | python sign_keylist.py make-keys --kid k1 --key-stdin --out keys.json`
+No private key is copied into keys.json.
 Repeat with another kid when you rotate, for example `--kid k2`.
 
 **Step 3: sign the key list with the root key.**
-`python sign_keylist.py sign --root-key-file root_private.pem --keys keys.json --out keylist.json`
+`python sign_keylist.py sign --root-key-file keys/root_private.pem --keys keys.json --out keylist.json`
 To block a compromised kid, add `--revoked k1` (or whichever kid).
 
 **Step 4: put the files where they're used.**
@@ -127,7 +125,7 @@ from licensing import verify_license
 text = open("license.json", encoding="utf-8").read()
 public_key = open("license-public.pem", encoding="utf-8").read()
 
-result = verify_license(text, public_key, mode="full")
+result = verify_license(text, public_key, mode="subscription")
 if result.valid_for_paid_features:
     print("Licensed:", result.payload["customer"], result.reason)
 else:
@@ -167,7 +165,7 @@ const { verifyLicense } = require('./licensing');
 const text = fs.readFileSync('license.json', 'utf8');
 const publicKey = fs.readFileSync('license-public.pem', 'utf8');
 
-const result = verifyLicense(text, publicKey, 'full');
+const result = verifyLicense(text, publicKey, 'subscription');
 if (result.valid) {
   console.log('Licensed:', result.payload.customer, result.reason);
 } else {
@@ -324,6 +322,71 @@ Things to change on any platform:
 - The rate limit lives in memory, per instance. For a global limit, use the platform's gateway rate limiting (for example Cloud Armor, AWS WAF, or Cloudflare rate limiting).
 - Scale-to-zero platforms restart the process often, so the signing key must load on each cold start from the secret store, not from a file in the image.
 
+## Signing key for local builds
+
+The Docker scripts never keep the signing key in the project folder. Each one reads the key from one of two places:
+
+1. `LICENSE_SIGNING_KEY_FILE`: a PEM file outside the project, such as `~/.config/licensing/private.pem`. Use this if you have no cloud access.
+2. `LICENSE_KEY_SOURCE`: `gcloud` (default), `aws` or `azure`. The script fetches the key into a temp file and deletes it when the script exits.
+
+Set the variables in your shell before running the script. Don't put them in `.env`, because `.env` is copied into the image. `LICENSE_SECRET_NAME` defaults to `license-signing-key`.
+
+### Create the secret (once per cloud account)
+
+Run the command for your provider. It stores the key in the place the local build reads from. Replace `license-signing-key` if you use another name.
+
+**Google Cloud (gcloud)**
+
+```bash
+gcloud secrets create license-signing-key --project YOUR_PROJECT --replication-policy=automatic
+gcloud secrets versions add license-signing-key --project YOUR_PROJECT --data-file=private.pem
+```
+
+Fetch it locally: `export LICENSE_GCP_PROJECT=YOUR_PROJECT`, then run the script.
+
+**AWS (Secrets Manager)**
+
+```bash
+aws secretsmanager create-secret --name license-signing-key --secret-string file://private.pem
+```
+
+Fetch it locally: `export LICENSE_KEY_SOURCE=aws`, then run the script. Your AWS credentials and region must be set in the shell.
+
+**Azure (Key Vault)**
+
+```bash
+az keyvault secret set --vault-name YOUR_VAULT --name license-signing-key --file private.pem
+```
+
+Fetch it locally: `export LICENSE_KEY_SOURCE=azure LICENSE_AZURE_VAULT=YOUR_VAULT`, then run the script. You need the `az` CLI and `az login`.
+
+**Cloudflare (Workers secret)**
+
+```bash
+npx wrangler secret put LICENSE_SIGNING_KEY < private.pem
+```
+
+Cloudflare secrets are write-only, so the scripts can't read them back. This stores the key for a Worker deploy only. For local builds, use one of the other options above.
+
+**GitHub (Actions secret)**
+
+```bash
+gh secret set LICENSE_SIGNING_KEY < private.pem --repo YOUR_ORG/YOUR_REPO
+```
+
+GitHub secrets are also write-only. Use this for CI, and keep the local copy in one of the other stores above or in a local file.
+
+**Local file (no cloud)**
+
+```bash
+mkdir -p ~/.config/licensing && cp private.pem ~/.config/licensing/private.pem && chmod 600 ~/.config/licensing/private.pem
+export LICENSE_SIGNING_KEY_FILE=~/.config/licensing/private.pem
+```
+
+On Windows, use `%USERPROFILE%\.config\licensing\private.pem` and `set LICENSE_SIGNING_KEY_FILE=...` instead.
+
+The root key (`keys/root_private.pem`) is not used by these scripts. It is only used offline by `sign_keylist.py`.
+
 ## Files needed to build
 
 Put these in the same folder as the `Dockerfile`:
@@ -334,12 +397,12 @@ Put these in the same folder as the `Dockerfile`:
 | `keylist.json` | your signed key list | `sign_keylist.py` on your PC |
 | `root-public.pem` | the root public key | `sign_keylist.py init-root` |
 | `.env` | settings (copy `.env.example`) | you |
-| `private.pem` | your signing key (run time only, mounted, not copied) | `issue_license.py` setup |
+| `private.pem` | not in the folder. The Docker scripts read it from `LICENSE_SIGNING_KEY_FILE` or your cloud secret store, then mount it at run time. | `issue_license.py` setup |
 | `gcp-sa.json` | Firestore service-account key (only if `.env` sets `GOOGLE_APPLICATION_CREDENTIALS`) | Google Cloud console |
 
 The app code is fetched from the public GitHub repo during the build, so you don't need the `app/` folder.
 
-Run `start.bat` (Windows) or `./start.sh` (Linux and Mac) from that folder. It checks for each file, stops with a clear message if one is missing, then builds and runs the server. Or build by hand with `docker build -t license-check .`.
+Run `DockerBuild.bat` (Windows) or `./DockerBuild.sh` (Linux and Mac) from that folder. It checks for each file, stops with a clear message if one is missing, then builds and runs the server. Or build by hand with `docker build -t license-check .`.
 
 ## Settings in a .env file
 

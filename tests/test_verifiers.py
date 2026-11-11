@@ -51,3 +51,16 @@ def test_clock_rollback_is_rejected():
     # The app has seen a later time than now, so the clock moved backwards.
     result = check_online_reply(item["reply"], pub, item["license_id"], now=checked, last_seen=later)
     assert not result.active and "clock" in result.reason
+
+
+def test_legacy_full_plan_is_alias_of_subscription():
+    # 'full' was merged into 'subscription'. Old licenses must give the same result under either name.
+    for case in CASES["cases"]:
+        if case["mode"] != "full":
+            continue
+        args = (case["license"], CASES["public_key_pem"])
+        kwargs = dict(features_needed=case.get("features_needed", []), now=NOW)
+        old = verify_license(*args, "full", **kwargs)
+        new = verify_license(*args, "subscription", **kwargs)
+        assert old.valid_for_paid_features == new.valid_for_paid_features, case["name"]
+        assert old.valid_for_paid_features == case["expect"], case["name"]

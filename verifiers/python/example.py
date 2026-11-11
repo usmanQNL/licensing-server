@@ -9,8 +9,8 @@ license_path, public_key_path = sys.argv[1], sys.argv[2]
 text = open(license_path, encoding="utf-8").read()
 public_key = open(public_key_path, encoding="utf-8").read()
 
-# mode: "opensource" | "subscription" | "gated" | "full"  (must match the license's plan)
-result = verify_license(text, public_key, mode="full")
+# mode: "opensource" | "subscription" | "gated"  (must match the license's plan)
+result = verify_license(text, public_key, mode="subscription")
 
 if result.valid_for_paid_features:
     print("Licensed:", result.payload["customer"], "-", result.reason)

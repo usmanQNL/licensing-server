@@ -2,7 +2,7 @@
 #   keylist.json       your signed key list (made with sign_keylist.py)
 #   root-public.pem    the root public key
 #   .env               settings (copied into the image; keep secrets out of it)
-# Usage: use start.bat (Windows) or start.sh (Linux/Mac), which check the files first.
+# Usage: use DockerBuild.bat (Windows) or DockerBuild.sh (Linux/Mac), which check the files first.
 # Or build by hand: docker build -t license-check .
 
 ARG REPO_REF=master

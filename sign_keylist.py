@@ -4,15 +4,15 @@
 Run this on your own PC. The root private key never goes to the server, to git, or to a customer.
 
 Step 1, once: create the root key pair.
-  python sign_keylist.py init-root --out root_private.pem
-  This writes root_private.pem (keep it offline, never in git) and root-public.pem (ship it inside the app).
+  python sign_keylist.py init-root --out keys/root_private.pem
+  This writes keys/root_private.pem (keep it offline, never in git) and root-public.pem (ship it inside the app).
 
 Step 2, add a signing key to keys.json (public half only, no private key is copied).
-  python sign_keylist.py make-keys --kid k1 --key-file private.pem --out keys.json
-  Repeat with another kid when you rotate. keys.json maps each kid to its public PEM.
+  gcloud secrets versions access latest --secret license-signing-key --project YOUR_PROJECT | python sign_keylist.py make-keys --kid k1 --key-stdin --out keys.json
+  (or --key-file PATH). Repeat with another kid when you rotate. keys.json maps each kid to its public PEM.
 
 Step 3, sign the key list with the root key.
-  python sign_keylist.py sign --root-key-file root_private.pem --keys keys.json --out keylist.json
+  python sign_keylist.py sign --root-key-file keys/root_private.pem --keys keys.json --out keylist.json
   Add --revoked k0 to block a compromised signing kid.
   Put keylist.json next to the Dockerfile and rebuild, or upload it, BEFORE issuing any license with the new kid.
 """
@@ -58,8 +58,14 @@ def cmd_init_root_paths(out: str) -> str:
 
 def cmd_make_keys(args) -> None:
     import os
-    with open(args.key_file, "rb") as f:
-        key = serialization.load_pem_private_key(f.read(), password=None)
+    if args.key_stdin:
+        pem = sys.stdin.buffer.read()
+    else:
+        if not args.key_file:
+            sys.exit("error: pass --key-file PATH or --key-stdin")
+        with open(args.key_file, "rb") as f:
+            pem = f.read()
+    key = serialization.load_pem_private_key(pem, password=None)
     if not isinstance(key, Ed25519PrivateKey):
         sys.exit("error: the signing key must be Ed25519")
     pub = key.public_key().public_bytes(serialization.Encoding.PEM,
@@ -115,7 +121,8 @@ def main():
 
     s3 = sub.add_parser("make-keys", help="Add a signing key's public half to keys.json.")
     s3.add_argument("--kid", required=True, help="Kid for this signing key, e.g. k1.")
-    s3.add_argument("--key-file", required=True, help="Path to the signing key's private PEM (read only).")
+    s3.add_argument("--key-file", help="Path to the signing key's private PEM (read only).")
+    s3.add_argument("--key-stdin", action="store_true", help="Read the private PEM from stdin, e.g. piped from gcloud. Nothing is written to disk.")
     s3.add_argument("--out", default="keys.json", help="keys.json to create or update. Default keys.json.")
     s3.set_defaults(func=cmd_make_keys)
 

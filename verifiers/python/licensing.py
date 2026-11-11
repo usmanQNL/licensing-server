@@ -2,7 +2,7 @@
 
 Usage:
     from licensing import verify_license, LicenseResult
-    result = verify_license(license_json_text, PUBLIC_KEY_PEM, mode="full", now=None)
+    result = verify_license(license_json_text, PUBLIC_KEY_PEM, mode="subscription", now=None)
     if result.valid_for_paid_features:
         ...
 """
@@ -17,7 +17,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 SUPPORTED_VERSION = 1
 GRACE_PERIOD = timedelta(days=14)
-MODES = ("opensource", "subscription", "gated", "full")
+MODES = ("opensource", "subscription", "gated")
+# "full" was merged into "subscription". Licenses issued as "full" still verify.
+LEGACY_PLAN_ALIASES = {"full": "subscription"}
+
+
+def _canonical_plan(name):
+    return LEGACY_PLAN_ALIASES.get(name, name)
 
 
 @dataclass
@@ -59,6 +65,7 @@ def pick_key(keys, kid):
 def verify_license(text: str, keys, mode: str, features_needed=(), now=None) -> LicenseResult:
     """Verify a license file. Never raises for bad input: it returns valid_for_paid_features=False.
     keys: a PEM string, or {kid: PEM} when the app trusts more than one key."""
+    mode = _canonical_plan(mode)
     if mode not in MODES:
         raise ValueError(f"unknown mode: {mode}")
     now = now or datetime.now(timezone.utc)
@@ -74,12 +81,12 @@ def verify_license(text: str, keys, mode: str, features_needed=(), now=None) -> 
     if payload.get("v") != SUPPORTED_VERSION:
         return LicenseResult(False, "unsupported license version", payload)
 
-    plan = payload.get("plan")
+    plan = _canonical_plan(payload.get("plan"))
     if mode != "opensource" and plan != mode:
         return LicenseResult(False, f"license is for plan '{plan}', app is '{mode}'", payload)
 
     in_grace = False
-    if mode in ("subscription", "full") and "expires_at" in payload:
+    if mode == "subscription" and "expires_at" in payload:
         expires = _parse_time(payload["expires_at"])
         if now > expires:
             if now <= expires + GRACE_PERIOD:

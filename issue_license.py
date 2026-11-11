@@ -5,7 +5,7 @@ Keep the private key out of git. Use --key-file for a local PEM, or
 --key-secret to read it from Google Secret Manager at run time.
 
 Examples:
-  python issue_license.py --customer "Example Ltd" --plan full --expires-days 365 \
+  python issue_license.py --customer "Example Ltd" --plan subscription --expires-days 365 \
       --features sso,hourly_sync --key-secret license-signing-key --project my-project
   python issue_license.py --customer "Example Ltd" --plan opensource --key-file private.pem
 """
@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-PLANS = ("opensource", "subscription", "gated", "full")
+PLANS = ("opensource", "subscription", "gated", "full")  # "full" is a legacy alias for "subscription"
 
 
 def canonical_bytes(payload: dict) -> bytes:
@@ -87,7 +87,11 @@ def parse_args():
     p.add_argument("--out", help="Output path. Default: licenses/<application>/<license_id>.license.json")
     p.add_argument("--dry-run", action="store_true",
                    help="Print the payload and the output path, and write nothing (no file, no store).")
-    return p.parse_args()
+    args = p.parse_args()
+    if args.plan == "full":
+        print("warning: plan 'full' is now 'subscription'. Writing 'subscription'.", file=sys.stderr)
+        args.plan = "subscription"
+    return args
 
 
 def check_keylist(args) -> None:

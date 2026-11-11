@@ -14,7 +14,7 @@ A JSON object with `kid`, `payload`, and `signature`.
     "v": 1,
     "license_id": "LIC-2026-0001",
     "customer": "Example Ltd",
-    "plan": "full",
+    "plan": "subscription",
     "features": ["sso", "hourly_sync"],
     "max_installs": 1,
     "issued_at": "2026-11-10T00:00:00Z",
@@ -27,7 +27,8 @@ A JSON object with `kid`, `payload`, and `signature`.
 - `kid` names the signing key. Verifiers pick the matching trusted key.
 - `max_installs` is the seat limit. It's enforced by the online check. Default 1 if missing.
 
-- `plan` is one of `opensource`, `subscription`, `gated`, `full`.
+- `plan` is one of `opensource`, `subscription`, `gated`.
+- `full` was merged into `subscription`. Licenses issued as `full` still verify, because the verifiers treat `full` as an alias of `subscription`.
 - `features` is used by `gated` mode. Other modes may leave it empty.
 - `application` is not in the file. It's used for the output folder and the Firestore record.
 - `expires_at` is absent for perpetual licenses (`opensource`, or a perpetual `gated` license).
