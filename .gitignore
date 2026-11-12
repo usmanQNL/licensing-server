@@ -23,6 +23,9 @@ gcp-sa.json
 licenses/
 license.json
 *.license.json
+# License cache files (<APP>_LICENSE_CACHE): fetched replies, install token, cached key list
+*.cache.json
+*.cache.json.tmp
 license-data.json
 dev-data.json
 

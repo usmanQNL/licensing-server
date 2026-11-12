@@ -141,8 +141,46 @@ pub fn clock_moved_back(now: DateTime<Utc>, last_seen: Option<DateTime<Utc>>) ->
     matches!(last_seen, Some(seen) if now < seen - Duration::minutes(5))
 }
 
-/// Verifies a signed reply from POST /v1/check. Cache the reply text yourself.
+/// issuer_url must be https. http is accepted only for localhost, for local tests.
+pub fn valid_issuer_url(url: &str) -> bool {
+    if url.len() > 2048 {
+        return false;
+    }
+    let host = |rest: &str| -> String {
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+        let authority = authority.rsplit('@').next().unwrap_or("");
+        if let Some(stripped) = authority.strip_prefix('[') {
+            return stripped.split(']').next().unwrap_or("").to_string();
+        }
+        authority.split(':').next().unwrap_or("").to_string()
+    };
+    if let Some(rest) = url.strip_prefix("https://") {
+        return !host(rest).is_empty();
+    }
+    if let Some(rest) = url.strip_prefix("http://") {
+        return matches!(host(rest).as_str(), "localhost" | "127.0.0.1" | "::1");
+    }
+    false
+}
+
+/// True unless both sides name an issuer and they differ. Licenses and replies from before
+/// issuer_url existed have none, and still match.
+pub fn same_issuer(license_issuer: Option<&str>, reply_issuer: Option<&str>) -> bool {
+    match (license_issuer, reply_issuer) {
+        (Some(a), Some(b)) if !a.is_empty() && !b.is_empty() => a.trim_end_matches('/') == b.trim_end_matches('/'),
+        _ => true,
+    }
+}
+
+/// Verifies a signed reply from POST /v1/check. Cache the reply text yourself (SPEC.md section 5
+/// describes the cache file). Same as `check_online_reply_for_issuer` without an issuer check.
 pub fn check_online_reply(text: &str, keys: Keys, license_id: &str, now: DateTime<Utc>, last_seen: Option<DateTime<Utc>>) -> OnlineResult {
+    check_online_reply_for_issuer(text, keys, license_id, None, now, last_seen)
+}
+
+/// Verifies a signed reply from POST /v1/check. `issuer_url` is the license's issuer_url: when both it
+/// and the reply have one, they must match.
+pub fn check_online_reply_for_issuer(text: &str, keys: Keys, license_id: &str, issuer_url: Option<&str>, now: DateTime<Utc>, last_seen: Option<DateTime<Utc>>) -> OnlineResult {
     let invalid = |reason: &str| OnlineResult { active: false, status: "invalid".into(), reason: reason.into(), fresh: false };
     if clock_moved_back(now, last_seen) {
         return invalid("system clock moved backwards");
@@ -160,6 +198,9 @@ pub fn check_online_reply(text: &str, keys: Keys, license_id: &str, now: DateTim
     }
     if payload.get("license_id").and_then(|l| l.as_str()) != Some(license_id) {
         return invalid("reply is for a different license");
+    }
+    if !same_issuer(issuer_url, payload.get("issuer_url").and_then(|u| u.as_str())) {
+        return invalid("reply is from a different issuer");
     }
 
     let status = payload.get("status").and_then(|s| s.as_str()).unwrap_or("unknown").to_string();
@@ -202,7 +243,8 @@ pub fn evaluate(text: &str, keys: Keys, mode: &str, license_id: &str, reply: Opt
         Some(r) => r,
         None => return local,
     };
-    let online = check_online_reply(reply, keys, license_id, now, last_seen);
+    let issuer = local.payload.get("issuer_url").and_then(|u| u.as_str());
+    let online = check_online_reply_for_issuer(reply, keys, license_id, issuer, now, last_seen);
     if online.fresh && !online.active {
         return LicenseResult { valid: false, reason: online.reason, in_grace: local.in_grace, payload: local.payload };
     }
@@ -213,6 +255,15 @@ pub fn evaluate(text: &str, keys: Keys, mode: &str, license_id: &str, reply: Opt
 
 /// Name of the .env variable that holds the license file's location, e.g. "QuellDAP" -> "QUELLDAP_LICENSE_FILE".
 pub fn license_file_env_var(app_name: &str) -> String {
+    env_stem(app_name) + "_LICENSE_FILE"
+}
+
+/// Name of the .env variable that holds the license cache file's location, e.g. "QuellDAP" -> "QUELLDAP_LICENSE_CACHE".
+pub fn license_cache_env_var(app_name: &str) -> String {
+    env_stem(app_name) + "_LICENSE_CACHE"
+}
+
+fn env_stem(app_name: &str) -> String {
     let mut stem = String::new();
     for c in app_name.to_uppercase().chars() {
         if c.is_ascii_alphanumeric() {
@@ -228,7 +279,7 @@ pub fn license_file_env_var(app_name: &str) -> String {
     if stem.starts_with(|c: char| c.is_ascii_digit()) {
         stem = format!("APP_{stem}");
     }
-    stem + "_LICENSE_FILE"
+    stem
 }
 
 /// Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory.
@@ -258,13 +309,34 @@ pub fn read_dotenv_value(path: &std::path::Path, key: &str) -> Option<String> {
 /// first, then from <project_root>/.env. A relative value is joined to `project_root`. When the variable
 /// is unset: license.json in the current working directory. The file may not exist: treat that as no license.
 pub fn find_license_file(app_name: &str, project_root: &std::path::Path) -> std::path::PathBuf {
-    let var = license_file_env_var(app_name);
-    let value = std::env::var(&var)
-        .ok()
-        .filter(|v| !v.is_empty())
-        .or_else(|| read_dotenv_value(&project_root.join(".env"), &var).filter(|v| !v.is_empty()));
-    match value {
+    match setting(&license_file_env_var(app_name), project_root) {
         Some(v) => project_root.join(v), // join keeps an absolute value as is
         None => std::env::current_dir().unwrap_or_default().join(DEFAULT_LICENSE_FILE),
+    }
+}
+
+/// A variable from the environment, then from <project_root>/.env. Empty counts as unset.
+fn setting(var: &str, project_root: &std::path::Path) -> Option<String> {
+    std::env::var(var)
+        .ok()
+        .filter(|v| !v.is_empty())
+        .or_else(|| read_dotenv_value(&project_root.join(".env"), var).filter(|v| !v.is_empty()))
+}
+
+/// The cache file used when <APP>_LICENSE_CACHE is unset: next to the license file, named after it.
+/// license.json -> license.cache.json, LIC-1.license.json -> LIC-1.license.cache.json.
+pub fn default_cache_file(license_file: &std::path::Path) -> std::path::PathBuf {
+    let name = license_file.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let stem = if name.to_lowercase().ends_with(".json") { &name[..name.len() - 5] } else { name.as_str() };
+    license_file.with_file_name(format!("{stem}.cache.json"))
+}
+
+/// Path of the license cache file (SPEC.md section 5). <APP>_LICENSE_CACHE holds the full path, read
+/// from the environment first, then from <project_root>/.env. A relative value is joined to `project_root`.
+/// When unset: <license file name>.cache.json next to the license file. The file may not exist yet.
+pub fn find_license_cache(app_name: &str, project_root: &std::path::Path) -> std::path::PathBuf {
+    match setting(&license_cache_env_var(app_name), project_root) {
+        Some(v) => project_root.join(v),
+        None => default_cache_file(&find_license_file(app_name, project_root)),
     }
 }

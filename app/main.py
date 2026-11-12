@@ -16,6 +16,9 @@ from .signing import load_private_key, sign_payload
 from .storage import build_storage
 
 VALID_FOR = timedelta(days=int(os.environ.get("LICENSE_VALID_DAYS", "7")))
+# This server's public URL, signed into every reply as issuer_url (SPEC.md section 5).
+# Set it to the same value issue_license.py writes into licenses (--issuer-url). Unset: no issuer_url.
+ISSUER_URL = os.environ.get("LICENSE_ISSUER_URL", "").strip().rstrip("/")
 log = logging.getLogger("license-check")
 
 app = FastAPI(title="License check", version="1")
@@ -157,6 +160,8 @@ def check(req: CheckRequest):
         "checked_at": seen_iso,
         "valid_until": (seen + VALID_FOR).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+    if ISSUER_URL:
+        payload["issuer_url"] = ISSUER_URL
     if issued_token:
         payload["install_token"] = issued_token
     return sign_payload(signing_key, payload, kid=os.environ.get("LICENSE_KID", "k1"))

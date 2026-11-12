@@ -136,3 +136,41 @@ Map<String, String> parseDotenv(String text) {
   }
   return values;
 }
+
+// ---- issuer_url and the license cache (.env: <APP_NAME>_LICENSE_CACHE) ----
+// This verifier checks license files only. If your Dart or Flutter app runs the online check,
+// follow SPEC.md section 5: send it to the license's issuer_url, keep the cache file below,
+// and port check_online_reply from the Python or Node verifier, including the issuer match.
+
+/// Name of the .env variable that holds the license cache file's location, e.g. 'QuellDAP' -> 'QUELLDAP_LICENSE_CACHE'.
+String licenseCacheEnvVar(String appName) {
+  final fileVar = licenseFileEnvVar(appName);
+  return '${fileVar.substring(0, fileVar.length - '_LICENSE_FILE'.length)}_LICENSE_CACHE';
+}
+
+/// The cache file used when <APP>_LICENSE_CACHE is unset: next to the license file, named after it.
+/// license.json -> license.cache.json, LIC-1.license.json -> LIC-1.license.cache.json.
+String defaultCacheFile(String licenseFile) {
+  final cut = licenseFile.lastIndexOf(RegExp(r'[/\\]')) + 1;
+  final folder = licenseFile.substring(0, cut);
+  final name = licenseFile.substring(cut);
+  final stem = name.toLowerCase().endsWith('.json') ? name.substring(0, name.length - 5) : name;
+  return '$folder$stem.cache.json';
+}
+
+/// issuer_url must be https. http is accepted only for localhost, for local tests.
+bool validIssuerUrl(String? url) {
+  if (url == null || url.length > 2048) return false;
+  final u = Uri.tryParse(url);
+  if (u == null) return false;
+  if (u.scheme == 'https') return u.host.isNotEmpty;
+  return u.scheme == 'http' && const ['localhost', '127.0.0.1', '::1'].contains(u.host);
+}
+
+/// True unless both sides name an issuer and they differ. Licenses and replies from before
+/// issuer_url existed have none, and still match.
+bool sameIssuer(String? licenseIssuer, String? replyIssuer) {
+  if (licenseIssuer == null || licenseIssuer.isEmpty || replyIssuer == null || replyIssuer.isEmpty) return true;
+  String norm(String u) => u.replaceAll(RegExp(r'/+$'), '');
+  return norm(licenseIssuer) == norm(replyIssuer);
+}

@@ -73,8 +73,9 @@ function verifyLicense(text, keys, mode, { featuresNeeded = [], now = Date.now()
 }
 
 // Verify a signed reply from POST /v1/check (SPEC.md section 5).
-// Cache the reply text yourself and call this again with the cached text when the
-// server is unreachable. Once valid_until passes, the reply is no longer trusted.
+// refreshOnlineStatus() fetches and caches replies for you. Call this again with the cached text
+// when the server is unreachable. Once valid_until passes, the reply is no longer trusted.
+// issuerUrl: the license's issuer_url. When both it and the reply have one, they must match.
 // Never throws for bad input. Returns { active, status, reason, validUntil }.
 const CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
 // True if the clock is earlier than the newest time this app has seen (SPEC.md section 8).
@@ -82,7 +83,25 @@ function clockMovedBack(now, lastSeen) {
   return lastSeen !== undefined && lastSeen !== null && now < lastSeen - CLOCK_TOLERANCE_MS;
 }
 
-function checkOnlineReply(text, keys, licenseId, { now = Date.now(), lastSeen = null } = {}) {
+/** issuer_url must be https. http is accepted only for localhost, for local tests. */
+function validIssuerUrl(url) {
+  if (typeof url !== 'string' || url.length > 2048) return false;
+  let u;
+  try { u = new URL(url); } catch (e) { return false; }
+  if (u.protocol === 'https:') return Boolean(u.hostname);
+  return u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+}
+
+const normUrl = (url) => (typeof url === 'string' ? url.replace(/\/+$/, '') : url);
+
+/** True unless both sides name an issuer and they differ. Licenses and replies from before
+ *  issuer_url existed have none, and still match. */
+function sameIssuer(licenseIssuer, replyIssuer) {
+  if (!licenseIssuer || !replyIssuer) return true;
+  return normUrl(licenseIssuer) === normUrl(replyIssuer);
+}
+
+function checkOnlineReply(text, keys, licenseId, { now = Date.now(), lastSeen = null, issuerUrl = null } = {}) {
   if (clockMovedBack(now, lastSeen)) return { active: false, status: 'invalid', reason: 'system clock moved backwards', fresh: false };
   let payload;
   try {
@@ -96,6 +115,7 @@ function checkOnlineReply(text, keys, licenseId, { now = Date.now(), lastSeen = 
   }
   if (payload.v !== SUPPORTED_VERSION) return { active: false, status: 'invalid', reason: 'unsupported reply version' };
   if (payload.license_id !== licenseId) return { active: false, status: 'invalid', reason: 'reply is for a different license' };
+  if (!sameIssuer(issuerUrl, payload.issuer_url)) return { active: false, status: 'invalid', reason: 'reply is from a different issuer' };
 
   const status = payload.status || 'unknown';
   const validUntil = payload.valid_until || '';
@@ -114,7 +134,7 @@ function evaluate(text, keys, mode, licenseId, { replyText = null, featuresNeede
   if (clockMovedBack(now, lastSeen)) return { valid: false, reason: 'system clock moved backwards', payload: null, inGrace: false };
   const local = verifyLicense(text, keys, mode, { featuresNeeded, now });
   if (!local.valid || replyText === null) return local;
-  const online = checkOnlineReply(replyText, keys, licenseId, { now });
+  const online = checkOnlineReply(replyText, keys, licenseId, { now, issuerUrl: local.payload.issuer_url || null });
   if (online.fresh && !online.active) return { valid: false, reason: online.reason, payload: local.payload, inGrace: local.inGrace };
   return local;
 }
@@ -138,12 +158,42 @@ function verifyKeyList(text, rootPem) {
   return trusted;
 }
 
-/** Trusted {kid: PEM}. Fetches {endpoint}/v1/keys, verifies it, caches it, and falls back to the
- *  cache when offline. A fetched list older than the cached one is ignored (no rollback).
+// ---- License cache file (.env: <APP_NAME>_LICENSE_CACHE) ----
+// One JSON file per install holds everything fetched from the licensing server:
+//   {"v": 1, license_id, issuer_url, install_hash, install_token,
+//    reply: <signed /v1/check reply, as text>, checked_at, last_seen, keylist: <signed key list, as text>}
+// It is signed data, not encrypted data. Nothing in it is trusted without its signature.
+// A missing or damaged cache is treated as empty.
+const CACHE_VERSION = 1;
+
+function readCache(file) {
+  const fs = require('fs');
+  if (!file) return {};
+  let text, doc;
+  try { text = fs.readFileSync(file, 'utf8'); doc = JSON.parse(text); } catch (e) { return {}; }
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return {};
+  // An older key-list-only cache file holds a bare signed key list.
+  if ('payload' in doc && 'signature' in doc) return { keylist: text, _legacyKeylist: true };
+  return doc;
+}
+
+function writeCache(file, state) {
+  const fs = require('fs');
+  const path = require('path');
+  fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
+  const clean = Object.fromEntries(Object.entries(state).filter(([k]) => !k.startsWith('_')));
+  fs.writeFileSync(file + '.tmp', JSON.stringify(clean, null, 2) + '\n');
+  fs.renameSync(file + '.tmp', file);
+}
+
+/** Trusted {kid: PEM}. Fetches {endpoint}/v1/keys, verifies it, caches it in the license cache file
+ *  (its "keylist" field), and falls back to the cache when offline. A fetched list older than the
+ *  cached one is ignored (no rollback). An older key-list-only cache file is still read and kept as is.
  *  Async. Throws if no valid list is available. Uses the global fetch (Node 18+) and fs. */
 async function loadTrustedKeys(rootPem, { cachePath, endpoint, timeoutMs = 5000 } = {}) {
   const fs = require('fs');
-  const cached = cachePath && fs.existsSync(cachePath) ? fs.readFileSync(cachePath, 'utf8') : null;
+  const state = readCache(cachePath);
+  const cached = state.keylist || null;
   if (endpoint) {
     try {
       const res = await fetch(endpoint.replace(/\/$/, '') + '/v1/keys', { signal: AbortSignal.timeout(timeoutMs) });
@@ -152,7 +202,10 @@ async function loadTrustedKeys(rootPem, { cachePath, endpoint, timeoutMs = 5000 
         verifyKeyList(fetched, rootPem);
         const issued = (t) => JSON.parse(t).payload.issued_at || '';
         if (!cached || issued(fetched) >= issued(cached)) {
-          if (cachePath) fs.writeFileSync(cachePath, fetched);
+          if (cachePath) {
+            if (state._legacyKeylist) fs.writeFileSync(cachePath, fetched);
+            else writeCache(cachePath, { ...state, v: CACHE_VERSION, keylist: fetched });
+          }
           return verifyKeyList(fetched, rootPem);
         }
       }
@@ -162,13 +215,103 @@ async function loadTrustedKeys(rootPem, { cachePath, endpoint, timeoutMs = 5000 
   throw new Error('no trusted key list: the server is unreachable and nothing is cached');
 }
 
+function verifiedPayload(text, keys) {
+  try {
+    const doc = JSON.parse(text);
+    const key = crypto.createPublicKey(pickKey(keys, doc.kid));
+    const ok = crypto.verify(null, Buffer.from(canonical(doc.payload), 'utf8'), key, Buffer.from(doc.signature, 'base64url'));
+    return ok && doc.payload && typeof doc.payload === 'object' ? doc.payload : null;
+  } catch (e) { return null; }
+}
+
+const fmtTime = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+const timeOrNull = (text) => { const t = text ? Date.parse(text) : NaN; return Number.isNaN(t) ? null : t; };
+
+/** Run the daily online check (SPEC.md section 5) and keep the license cache up to date.
+ *  The server is the license's signed issuer_url; licenses without one use `endpoint` (the app's
+ *  configured URL). With neither, nothing is sent. Sends at most once per minIntervalMs.
+ *  Keeps install_hash, install_token, the last valid signed reply and lastSeen in the cache.
+ *  A cache made for another license or another server is started fresh (the key list is kept).
+ *  Never throws for network errors. Returns { replyText, lastSeen, issuerUrl, contacted, reason }. Then:
+ *    evaluate(licenseText, keys, mode, licenseId, { replyText, lastSeen }) */
+async function refreshOnlineStatus(licenseText, keys, { cachePath, endpoint = null, now = Date.now(),
+  timeoutMs = 5000, minIntervalMs = 24 * 3600 * 1000 } = {}) {
+  const payload = verifiedPayload(licenseText, keys);
+  if (!payload) return { replyText: null, lastSeen: null, issuerUrl: '', contacted: false, reason: 'license is invalid, nothing sent' };
+  const licenseId = payload.license_id;
+  const issuer = payload.issuer_url;
+  const server = normUrl(validIssuerUrl(issuer) ? issuer : endpoint) || '';
+
+  let state = readCache(cachePath);
+  if (state.license_id !== licenseId || (state.issuer_url || '') !== server) {
+    state = state.keylist ? { keylist: state.keylist } : {};
+  }
+  delete state._legacyKeylist;
+  Object.assign(state, { v: CACHE_VERSION, license_id: licenseId, issuer_url: server });
+  if (!state.install_hash) state.install_hash = crypto.randomBytes(18).toString('base64url');
+
+  const lastSeen = timeOrNull(state.last_seen);
+  const newest = lastSeen !== null ? Math.max(now, lastSeen) : now;
+  const checkedAt = timeOrNull(state.checked_at);
+  let contacted = false;
+  let reason = 'using cached reply';
+
+  if (!server) {
+    reason = 'no server configured, offline only';
+  } else if (checkedAt !== null && checkedAt <= now && now < checkedAt + minIntervalMs) {
+    reason = 'checked recently, using cached reply';
+  } else {
+    const body = { license_id: licenseId, install_hash: state.install_hash };
+    if (state.install_token) body.install_token = state.install_token;
+    try {
+      const res = await fetch(server + '/v1/check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) {
+        reason = `server answered HTTP ${res.status}, using cached reply`;
+      } else {
+        const text = await res.text();
+        const result = checkOnlineReply(text, keys, licenseId, { now, issuerUrl: issuer || null });
+        if (result.status === 'invalid') {
+          reason = 'server reply rejected: ' + result.reason;
+        } else {
+          contacted = true;
+          reason = result.reason;
+          state.reply = text;
+          state.checked_at = fmtTime(now);
+          const token = JSON.parse(text).payload.install_token;
+          if (token) state.install_token = token;
+        }
+      }
+    } catch (e) {
+      reason = 'server unreachable, using cached reply';
+    }
+  }
+
+  state.last_seen = fmtTime(newest);
+  if (cachePath) {
+    try { writeCache(cachePath, state); } catch (e) { reason += ' (cache not writable)'; }
+  }
+  return { replyText: state.reply || null, lastSeen: newest, issuerUrl: server, contacted, reason };
+}
+
 // ---- Locating the license file (.env: <APP_NAME>_LICENSE_FILE) ----
+
+function envStem(appName) {
+  let stem = String(appName).toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'APP';
+  if (/^[0-9]/.test(stem)) stem = 'APP_' + stem;
+  return stem;
+}
 
 /** Name of the .env variable that holds the license file's location, e.g. 'QuellDAP' -> 'QUELLDAP_LICENSE_FILE'. */
 function licenseFileEnvVar(appName) {
-  let stem = String(appName).toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'APP';
-  if (/^[0-9]/.test(stem)) stem = 'APP_' + stem;
-  return stem + '_LICENSE_FILE';
+  return envStem(appName) + '_LICENSE_FILE';
+}
+
+/** Name of the .env variable that holds the license cache file's location, e.g. 'QuellDAP' -> 'QUELLDAP_LICENSE_CACHE'. */
+function licenseCacheEnvVar(appName) {
+  return envStem(appName) + '_LICENSE_CACHE';
 }
 
 /** Used when <APP>_LICENSE_FILE is not set: license.json in the current working directory. */
@@ -198,10 +341,36 @@ function readDotenv(file) {
  *  The file may not exist: treat that as no license. */
 function findLicenseFile(appName, projectRoot = '.') {
   const path = require('path');
-  const name = licenseFileEnvVar(appName);
-  const value = process.env[name] || readDotenv(path.join(projectRoot, '.env'))[name];
+  const value = setting(licenseFileEnvVar(appName), projectRoot);
   return value ? path.resolve(projectRoot, value) : path.resolve(process.cwd(), DEFAULT_LICENSE_FILE);
 }
 
+/** A variable from the environment, then from <projectRoot>/.env. Empty counts as unset. */
+function setting(name, projectRoot) {
+  const path = require('path');
+  return process.env[name] || readDotenv(path.join(projectRoot, '.env'))[name] || null;
+}
+
+/** The cache file used when <APP>_LICENSE_CACHE is unset: next to the license file, named after it.
+ *  license.json -> license.cache.json, LIC-1.license.json -> LIC-1.license.cache.json. */
+function defaultCacheFile(licenseFile) {
+  const path = require('path');
+  const full = path.resolve(licenseFile);
+  const name = path.basename(full);
+  const stem = name.toLowerCase().endsWith('.json') ? name.slice(0, -5) : name;
+  return path.join(path.dirname(full), stem + '.cache.json');
+}
+
+/** Absolute path of the license cache file. <APP>_LICENSE_CACHE holds the full path, read from the
+ *  environment first, then from <projectRoot>/.env. A relative value resolves against projectRoot.
+ *  When unset: <license file name>.cache.json next to the license file. The file may not exist yet. */
+function findLicenseCache(appName, projectRoot = '.') {
+  const path = require('path');
+  const value = setting(licenseCacheEnvVar(appName), projectRoot);
+  return value ? path.resolve(projectRoot, value) : defaultCacheFile(findLicenseFile(appName, projectRoot));
+}
+
 module.exports = { verifyLicense, checkOnlineReply, evaluate, canonical, verifyKeyList, loadTrustedKeys,
-  licenseFileEnvVar, DEFAULT_LICENSE_FILE, readDotenv, findLicenseFile };
+  validIssuerUrl, sameIssuer, refreshOnlineStatus,
+  licenseFileEnvVar, licenseCacheEnvVar, DEFAULT_LICENSE_FILE, readDotenv, findLicenseFile,
+  defaultCacheFile, findLicenseCache };

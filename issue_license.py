@@ -7,7 +7,8 @@ Keep the private key out of git. Use --key-file for a local PEM, or
 Examples:
   python issue_license.py --customer "Example Ltd" --plan subscription --expires-days 365 \
       --features sso,hourly_sync --key-secret license-signing-key --project my-project
-  python issue_license.py --customer "Example Ltd" --plan opensource --key-file private.pem
+  python issue_license.py --customer "Example Ltd" --plan opensource --key-file private.pem \
+      --issuer-url https://licensing.example.com
 """
 import argparse
 import base64
@@ -19,6 +20,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import app  # noqa: E402,F401  (loads the repo's .env, e.g. LICENSE_ISSUER_URL, without overriding real variables)
 from datetime import datetime, timedelta, timezone
 
 from cryptography.hazmat.primitives import serialization
@@ -78,6 +80,10 @@ def parse_args():
     p.add_argument("--max-installs", type=int, default=1,
                    help="How many installs this license covers (seat limit, enforced by the online check). Default 1.")
     p.add_argument("--expires-on", help="Expiry date, YYYY-MM-DD (UTC). Overrides --expires-days.")
+    p.add_argument("--issuer-url", default=os.environ.get("LICENSE_ISSUER_URL", ""),
+                   help="URL of the licensing server that issued this license, signed into the license as issuer_url. "
+                        "Apps send the online check there. Must be https (http only for localhost). "
+                        "Default: $LICENSE_ISSUER_URL. Omit for a license without an online check.")
     p.add_argument("--keylist", default="keylist.json",
                    help="Last signed key list (from sign_keylist.py). Warns if --kid is not in it. Default keylist.json.")
     key = p.add_mutually_exclusive_group(required=True)
@@ -91,7 +97,21 @@ def parse_args():
     if args.plan == "full":
         print("warning: plan 'full' is now 'subscription'. Writing 'subscription'.", file=sys.stderr)
         args.plan = "subscription"
+    args.issuer_url = args.issuer_url.strip().rstrip("/")
+    if args.issuer_url and not valid_issuer_url(args.issuer_url):
+        p.error("--issuer-url must be an https URL (http is allowed only for localhost)")
     return args
+
+
+def valid_issuer_url(url: str) -> bool:
+    """Same rule as the verifiers: https, or http for localhost only."""
+    from urllib.parse import urlparse
+    parts = urlparse(url)
+    if len(url) > 2048:
+        return False
+    if parts.scheme == "https":
+        return bool(parts.hostname)
+    return parts.scheme == "http" and parts.hostname in ("localhost", "127.0.0.1", "::1")
 
 
 def check_keylist(args) -> None:
@@ -127,6 +147,8 @@ def main():
         "max_installs": args.max_installs,
         "issued_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+    if args.issuer_url:
+        payload["issuer_url"] = args.issuer_url
     if args.max_installs < 1:
         sys.exit("error: --max-installs must be at least 1")
 
@@ -179,6 +201,7 @@ def register_license(args, payload: dict) -> None:
         "max_installs": payload["max_installs"],
         "issued_at": payload["issued_at"],
         "expires_at": payload.get("expires_at"),
+        "issuer_url": payload.get("issuer_url"),
     }
     store.put_license(payload["license_id"], doc)
     target = args.firestore_project and f"Firestore project {args.firestore_project}" or args.json_path or "the server's storage"

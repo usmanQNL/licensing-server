@@ -18,7 +18,8 @@ A JSON object with `kid`, `payload`, and `signature`.
     "features": ["sso", "hourly_sync"],
     "max_installs": 1,
     "issued_at": "2026-11-10T00:00:00Z",
-    "expires_at": "2027-11-10T00:00:00Z"
+    "expires_at": "2027-11-10T00:00:00Z",
+    "issuer_url": "https://licensing.example.com"
   },
   "signature": "base64url-ed25519-signature"
 }
@@ -33,6 +34,7 @@ A JSON object with `kid`, `payload`, and `signature`.
 - `application` is not in the file. It's used for the output folder and the Firestore record.
 - `expires_at` is absent for perpetual licenses (`opensource`, or a perpetual `gated` license).
 - Times are UTC, RFC 3339, with a `Z` suffix.
+- `issuer_url` is optional: the URL of the licensing server that issued the license. The app sends its online check there (section 5). It must be `https`, or `http` for `localhost`, `127.0.0.1` or `::1` only (local tests), with no trailing `/`. It is covered by the signature, so editing it makes the license invalid. Licenses issued before this field existed have none and stay valid: the app then uses its configured server URL. Adding it did not change `v`.
 
 ### Signing
 - Algorithm: Ed25519.
@@ -89,7 +91,8 @@ When the app also has an online reply, combine them (section 8, `evaluate`).
 
 Users can turn it off. The skill asks for the server endpoint URL at setup.
 
-- Once per day, the app sends `{license_id, install_hash}` to `POST {endpoint}/v1/check`. After activation, it also sends `install_token`.
+- Once per day, the app sends `{license_id, install_hash}` to `POST {server}/v1/check`. After activation, it also sends `install_token`.
+- `{server}` is the license's `issuer_url`. A license without one uses the app's configured server URL. With neither, the app runs offline only.
 - `install_hash` is a random ID generated once per install and stored locally. It is not personal data. No names, emails, or machine identifiers.
 - The first check from an install that gets a free seat returns an `install_token` in the reply, once. The app stores it. Every later check must send it, or the server returns HTTP 403.
 - The server replies with a signed status:
@@ -103,7 +106,8 @@ Users can turn it off. The skill asks for the server endpoint URL at setup.
     "status": "active",
     "max_installs": 1,
     "checked_at": "2026-11-10T05:00:00Z",
-    "valid_until": "2026-11-17T05:00:00Z"
+    "valid_until": "2026-11-17T05:00:00Z",
+    "issuer_url": "https://licensing.example.com"
   },
   "signature": "..."
 }
@@ -112,12 +116,40 @@ Users can turn it off. The skill asks for the server endpoint URL at setup.
 On first activation the payload also has `install_token`.
 
 - `status` is `active`, `revoked`, `unknown`, or `limit_reached` (this install is beyond the license's `max_installs`).
+- `issuer_url` in the reply is the server's own URL (`LICENSE_ISSUER_URL`), absent if the server has none configured.
 - The app verifies the reply with the same public key. It does not trust unsigned data.
+- When both the license and the reply have an `issuer_url`, they must match (a trailing `/` is ignored). A reply from another issuer is rejected and never cached. When either side has none (older licenses or servers), the check is skipped.
 - The app caches the last valid signed reply. A failed or unreachable check uses the cache.
 - A cached reply expires at `valid_until`. Past that time, the app falls back to the grace-period rules.
 - `revoked`, `unknown`, and `limit_reached` disable paid features at the next successful check. There is no instant kill.
 - Clock guard: the app stores the newest time it has seen (`last_seen`). If the clock is more than 5 minutes behind it, paid features turn off until the clock is corrected.
 - Network errors never block sign-in.
+- Nothing is encrypted. License files, replies and key lists are readable JSON. The Ed25519 signature makes them tamper-evident, not secret.
+
+### 5a. License cache file
+
+Everything the app fetches lives in one JSON file per install:
+
+```json
+{
+  "v": 1,
+  "license_id": "LIC-2026-0001",
+  "issuer_url": "https://licensing.example.com",
+  "install_hash": "random, made once",
+  "install_token": "from the first reply",
+  "reply": "<last valid signed /v1/check reply, as text>",
+  "checked_at": "2026-11-10T05:00:00Z",
+  "last_seen": "2026-11-10T05:00:00Z",
+  "keylist": "<last signed key list from /v1/keys, as text>"
+}
+```
+
+- Location: `<APP_NAME>_LICENSE_CACHE` in the same `.env` as `<APP_NAME>_LICENSE_FILE`, with the same naming and lookup rules (environment first, then `.env`; a relative value resolves against the project root). When unset: next to the license file, named after it with `.json` replaced by `.cache.json` (`license.json` gives `license.cache.json`).
+- `issuer_url` here is the server the install actually checks with. A cache made for another `license_id` or server is started fresh, keeping only `keylist`.
+- `reply` and `keylist` are re-verified every time they are read. The cache adds no trust of its own.
+- `install_token` is the only sensitive value. Keep the file out of git and out of shared folders.
+- A missing or unreadable cache is treated as empty. An older cache file that holds only a bare signed key list is still read.
+- Writes go to a temporary file and are then renamed, so a crash can't leave half a file.
 
 ## 6. Server API (v1)
 
@@ -130,7 +162,7 @@ On first activation the payload also has `install_token`.
 - No endpoint lists or edits licenses. Management happens in the storage console or through the storage adapter.
 
 Storage (vendor-neutral):
-- `licenses` collection: `license_id`, `status` (`active`, `revoked`), `plan`, `customer`, `application`, `features`, `max_installs`, `issued_at`, `expires_at`, `client_email`, `client_phone`. The contact fields are never written to license files or replies.
+- `licenses` collection: `license_id`, `status` (`active`, `revoked`), `plan`, `customer`, `application`, `features`, `max_installs`, `issued_at`, `expires_at`, `issuer_url`, `client_email`, `client_phone`. The contact fields are never written to license files or replies.
 - `installs` collection: `license_id`, `install_hash`, `first_seen`, `last_seen`, `token_hash` (SHA-256 of the install token, never the token itself).
 - Adapters: Firestore (first), plus JSON file for local tests. Others can be added (README, "Use another database").
 
@@ -145,6 +177,7 @@ Every file and reply has `v`. Bump it only for breaking changes. Verifiers must 
 - **Combined decision (`evaluate`):** the local license must be valid. A fresh online reply of `revoked`, `unknown`, or `limit_reached` turns paid features off. With no reply, or a reply past `valid_until`, the local license decides, so offline use still works.
 - **Reply freshness:** a reply is trusted only until its `valid_until`. Cached replies are never extended.
 - **Install tokens:** the first check for a new install with a free seat returns an `install_token` in the signed reply, once. The server stores only its SHA-256 hash. Every later check for that install must send the token, or the server returns HTTP 403. A guessed or copied install hash can't use someone else's seat. A leaked license file can still use up seats, so this is not a full defence.
+- **issuer_url:** optional in licenses and replies, signed in both. It names where to send the online check and must match between the two when both have one. Old licenses and old servers without it keep working.
 - **Clock guard:** the app stores the newest time it has seen (`last_seen`) and passes it to the verifier. If the clock is more than 5 minutes behind `last_seen`, paid features turn off until the clock is corrected. Store the maximum of the current time after each check.
 
 ## 9. Open items
