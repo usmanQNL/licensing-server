@@ -1,0 +1,8 @@
+Copyright (c) <YEAR> <COPYRIGHT HOLDER>. All rights reserved.
+
+This software and its source code are proprietary. No license is granted to
+copy, modify, distribute, sublicense or sell it, except as stated in the End
+User License Agreement in EULA.md, under a valid license issued by
+<COPYRIGHT HOLDER>.
+
+For licensing, contact <CONTACT EMAIL OR SALES PAGE>.

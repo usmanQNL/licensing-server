@@ -14,13 +14,36 @@ Licensing is a deterrent, not DRM. A check on the user's machine can always be b
 
 | Mode | What it does |
 |---|---|
-| OpenSource | Adds an MIT `LICENSE`. No keys, no checks. |
+| OpenSource | Adds a free license (MIT by default). No keys, no checks. |
 | Subscription | Signed license with an expiry date, checked at launch, with a 14-day grace period. |
 | Gated | Signed license listing features. Each paid feature checks its flag. Optional end date, with the same 14-day grace period. |
 
+Every mode also gets a license file for the project. See "Choose a license" below.
+
+## Choose a license
+
+The skill asks which license to publish the project under and copies the text from `templates/licenses/`, filling in only the copyright holder, year and other placeholders. [`templates/licenses/README.md`](templates/licenses/README.md) lists every file and where it goes.
+
+| For | License | SPDX ID | In short |
+|---|---|---|---|
+| Free code | MIT (default) | `MIT` | Shortest and most used. Keep the copyright notice. |
+| Free code | Apache 2.0 | `Apache-2.0` | Like MIT, plus an explicit patent grant and a `NOTICE` file. |
+| Free code | BSD 2-Clause | `BSD-2-Clause` | Like MIT. |
+| Free code | BSD 3-Clause | `BSD-3-Clause` | Like BSD 2-Clause, and bars using your name to promote derived products. |
+| Add-on | DCO sign-off | n/a | Contributors sign off every commit; a workflow checks pull requests. |
+| Docs and assets only | Creative Commons Attribution 4.0 | `CC-BY-4.0` | Reuse with credit. Not for code. |
+| Docs and assets only | CC0 1.0 | `CC0-1.0` | Public domain. Not for code. |
+| Paid | Proprietary EULA (default) | `LicenseRef-Proprietary` | All rights reserved, plus an EULA whose seats, term, grace period and features match the license file. |
+| Paid, public source | Business Source License 1.1 | `BUSL-1.1` | Production use is paid; each version becomes Apache 2.0 on a Change Date. |
+| Paid, public source | Elastic License 2.0 | `Elastic-2.0` | Free to use, but no hosted-service resale and no bypassing license keys. |
+| Paid, public source | PolyForm Noncommercial 1.0.0 | `PolyForm-Noncommercial-1.0.0` | Free for noncommercial use; commercial use is paid. |
+| Paid | Dual licensing | e.g. `AGPL-3.0-only` + commercial | A how-to, not a template: copyleft for free users, a paid license for others. Needs a CLA. |
+
+This is not legal advice. The standard licenses are safe to use as they are; have a lawyer review the EULA template before you sell under it.
+
 ## Use the skill
 
-Add `SKILL.md` to your Claude skills (claude.ai: Capabilities, then Skills). In a new project, ask Claude to add licensing. It asks for the mode, application name, languages, whether to enable the online check, and feature names. It then walks you through the keys, verifier, feature gating, and tests.
+Add `SKILL.md` to your Claude skills (claude.ai: Capabilities, then Skills). In a new project, ask Claude to add licensing. It asks for the mode, the project's license, application name, languages, whether to enable the online check, and feature names. It then walks you through the keys, verifier, feature gating, and tests.
 
 ## Manage licenses
 
@@ -561,4 +584,4 @@ Copyright 2026 Usman Ahmad.
 
 Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.
 
-The skill's OpenSource mode is separate: it adds an MIT `LICENSE` to the projects you apply it to, and does not change this repo's license.
+The license templates in `templates/licenses/` are separate: the skill copies them into the projects you apply it to, and they do not change this repo's license. The standard license texts keep their own terms and copyright notices.

@@ -35,17 +35,25 @@ Apps trust the signing key because the root key vouches for it in `keylist.json`
 Ask only what the chosen mode needs.
 
 1. **Mode.** Pick one:
-   - **OpenSource:** adds an MIT `LICENSE` file. No keys, no checks. Record the mode, the app name and the `LICENSE` file in `licensing/licensing.md`, then stop.
+   - **OpenSource:** adds a free license file (question 2). No keys, no checks. Record the mode, the app name, the license and its files in `licensing/licensing.md`, then stop.
    - **Subscription:** a signed license with an expiry date, checked at launch, with a 14-day grace period. Its license must carry the `subscription` plan.
    - **Gated:** a signed license listing features. Each paid feature checks its flag before it runs. Its license must carry the `gated` plan. It can have an end date (`--expires-days` or `--expires-on`), with the same 14-day grace period; leave it out for a perpetual license.
-2. **Application name**, for example `QuellDAP`. Used in license folders, the license record, and the `.env` variable that holds the license file's location (`QUELLDAP_LICENSE_FILE`, see Step 6).
-3. **Language**: Python, Node.js, Rust, or Dart/Flutter (untested).
-4. **Licensing server.** Does the user already run one? If yes, get its endpoint URL and its root public key (or its key list URL), and skip Step 2. If no, deploy this repo's server in Step 2.
-5. **Online check?** On by default. Users can turn it off. If on, the endpoint URL from question 4. That URL is also the **issuer URL**: it is signed into every license (`issuer_url`) and every server reply, so the app knows where to check and can't be pointed at another server. It must be `https` (`http` only for `localhost`).
-6. **Gated features** (Gated mode only). List each paid feature. For each one get a **feature ID**, a short description and the code it will guard. The feature ID is the exact lowercase string that goes into the license's `features` list and into the verifier's feature check, for example `sso`, `hourly_sync`, `online_update`. It must never change once a license has been issued with it. Free features are not listed.
-7. **Repositories and where things live.** The name (and URL, if any) of the app's repository, and of the licensing server's repository or deploy location if it has one. The cloud project (or other host) for the server, the license store and the signing secret, if those exist.
+2. **License.** Which license the project is published under. Every mode gets one, and the templates are in `templates/licenses/` (its `README.md` says where each file goes). If that folder is not next to this skill, use the copy at https://github.com/usmanQNL/licensing-server/tree/master/templates/licenses. Show the user the options for their mode with a one-line description each, and recommend the default.
+   - **OpenSource** (pick one): **MIT** (default, the shortest and most used), **Apache-2.0** (adds a patent grant and a `NOTICE` file), **BSD-2-Clause**, or **BSD-3-Clause** (also bars using the owner's name to promote derived products). Then offer two optional add-ons:
+     - **DCO sign-off:** contributors sign off each commit. Adds `DCO`, `CONTRIBUTING.md` and the `.github/workflows/dco.yml` check.
+     - **Docs and assets license:** **CC-BY-4.0** (reuse with credit) or **CC0-1.0** (public domain) for a `docs/` or `assets/` folder. Never offer Creative Commons for code; Creative Commons says its licenses are not meant for software.
+   - **Subscription or Gated** (pick one): **Proprietary EULA** (default: an "All rights reserved" `LICENSE` plus `EULA.md` whose seat, term, grace period and feature terms match the license file), **BUSL-1.1** (public source, production use is paid, each version turns into Apache-2.0 on a Change Date), **Elastic-2.0** (public source, no hosted-service resale, no bypassing license keys), or **PolyForm-Noncommercial-1.0.0** (free for noncommercial use, paid for commercial). If the user asks for dual licensing (for example AGPL plus a commercial license), follow the "Dual licensing" section of `templates/licenses/README.md`.
+   - Ask for the **copyright holder** (person or company) and the **year**, plus anything the chosen template needs: for the EULA, the contact, pricing, refund policy and governing law; for BUSL-1.1, the Additional Use Grant and Change Date.
+   - Copy the template, fill in only its `<...>` placeholders, and never change a standard license's wording. If the project already has a `LICENSE`, show it to the user and ask before replacing it.
+   - Tell the user once, in plain words: this is not legal advice; the standard licenses are safe to use as they are, but the EULA template should be reviewed by a lawyer before they sell under it.
+3. **Application name**, for example `QuellDAP`. Used in license folders, the license record, and the `.env` variable that holds the license file's location (`QUELLDAP_LICENSE_FILE`, see Step 6).
+4. **Language**: Python, Node.js, Rust, or Dart/Flutter (untested).
+5. **Licensing server.** Does the user already run one? If yes, get its endpoint URL and its root public key (or its key list URL), and skip Step 2. If no, deploy this repo's server in Step 2.
+6. **Online check?** On by default. Users can turn it off. If on, the endpoint URL from question 5. That URL is also the **issuer URL**: it is signed into every license (`issuer_url`) and every server reply, so the app knows where to check and can't be pointed at another server. It must be `https` (`http` only for `localhost`).
+7. **Gated features** (Gated mode only). List each paid feature. For each one get a **feature ID**, a short description and the code it will guard. The feature ID is the exact lowercase string that goes into the license's `features` list and into the verifier's feature check, for example `sso`, `hourly_sync`, `online_update`. It must never change once a license has been issued with it. Free features are not listed.
+8. **Repositories and where things live.** The name (and URL, if any) of the app's repository, and of the licensing server's repository or deploy location if it has one. The cloud project (or other host) for the server, the license store and the signing secret, if those exist.
 
-**Record:** write every question and its answer, word for word where it matters, into the "Answers" section of `licensing/licensing.md`. For Gated, fill the "Gated features" table now. The guarded code can say "to be wrapped" until Step 6.
+**Record:** write every question and its answer, word for word where it matters, into the "Answers" section of `licensing/licensing.md`. Fill the "Project license" table with the license, its SPDX ID, the copyright holder and year, the add-ons, and each file copied from `templates/licenses/`. For Gated, fill the "Gated features" table now. The guarded code can say "to be wrapped" until Step 6.
 
 ## Step 2: deploy the server (only if there is no server yet)
 
@@ -246,13 +254,14 @@ The shared cases in `verifiers/cases.json` and the online replies in `verifiers/
 - Keep the private keys (root and signing) out of git and out of app code.
 - Licensing is a deterrent, not DRM. A check on the user's machine can always be bypassed. Say so in the project docs.
 - Use only the mode the user chose. Don't add checks they didn't ask for.
+- Copy license texts from `templates/licenses/` word for word and fill only the placeholders. Creative Commons is for docs and assets, never code. Say once that this is not legal advice, and that the EULA template needs a lawyer's review.
 - App stores may require in-app purchase for paid digital features on iOS and Android. Check before adding licensing to a mobile app.
 - The license file's location goes in `.env` as `<APP_NAME>_LICENSE_FILE`, and the cache file's as `<APP_NAME>_LICENSE_CACHE`, never hard-coded. Keep `.env`, license files and cache files out of git.
 - Keep `licensing/licensing.md` current. It is the single source of truth for this project's licensing, and the next agent starts from it.
 
 ## Template: `licensing/licensing.md`
 
-Copy this into the target project and fill it in. Leave out sections the chosen mode does not use (OpenSource needs only the header, "Answers" and "Files and folders"). Replace every `<...>`; write "n/a" rather than leaving a placeholder.
+Copy this into the target project and fill it in. Leave out sections the chosen mode does not use (OpenSource needs only the header, "Answers", "Project license" and "Files and folders"). Replace every `<...>`; write "n/a" rather than leaving a placeholder.
 
 ````markdown
 # Licensing record: <application name>
@@ -279,6 +288,7 @@ Last updated: <YYYY-MM-DD>
 | Question | Answer |
 |---|---|
 | Mode | <OpenSource / Subscription / Gated> |
+| License | <MIT / Apache-2.0 / BSD-2-Clause / BSD-3-Clause / Proprietary EULA / BUSL-1.1 / Elastic-2.0 / PolyForm-Noncommercial-1.0.0 / dual> |
 | License plan in the file | <subscription / gated> |
 | Application name | <QuellDAP> |
 | Language | <Python / Node.js / Rust / Dart> |
@@ -288,6 +298,25 @@ Last updated: <YYYY-MM-DD>
 | Online check | <on / off> |
 | Grace period | <14 days> |
 | Other answers or decisions | <anything else the user said that changes the setup> |
+
+## Project license
+
+Not legal advice. Standard licenses are copied word for word from `templates/licenses/`; only placeholders were filled.
+
+| Item | Value |
+|---|---|
+| License | <MIT License> |
+| SPDX ID | <MIT / Apache-2.0 / BSD-2-Clause / BSD-3-Clause / LicenseRef-Proprietary / BUSL-1.1 / Elastic-2.0 / PolyForm-Noncommercial-1.0.0> |
+| Copyright holder and year | <Name, 2026> |
+| DCO sign-off | <yes: DCO, CONTRIBUTING.md, .github/workflows/dco.yml / no> |
+| Docs and assets license | <CC-BY-4.0 for docs/ / CC0-1.0 for assets/ / none> |
+| Template parameters | <BUSL-1.1: Additional Use Grant, Change Date / EULA: governing law, refund policy / n/a> |
+| Lawyer review of the EULA | <done on YYYY-MM-DD / not yet / n/a> |
+
+| File in the project | Copied from |
+|---|---|
+| `LICENSE` | <templates/licenses/open-source/MIT.txt> |
+| <NOTICE / EULA.md / DCO / CONTRIBUTING.md / docs/LICENSE> | <template path> |
 
 ## Repositories and hosting
 
@@ -317,6 +346,7 @@ Key list files: `keys.json` at <path>, `keylist.json` at <path> (and on the serv
 | Path | Purpose |
 |---|---|
 | `licensing/licensing.md` | this record |
+| `LICENSE` (and any other license files) | the project license, see "Project license" |
 | <path to verifier> | license verifier |
 | <path to root-public.pem> | trusted root public key shipped in the app |
 | <app settings file / key> | server endpoint and online-check setting |

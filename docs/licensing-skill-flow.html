@@ -54,7 +54,7 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 </div>
 <figure style="margin:0">
 <div class="scroll">
-<svg viewBox="0 0 1000 1830" role="img" aria-label="Flowchart of the add-licensing skill: the mode question exits early for OpenSource with only an MIT LICENSE file; otherwise the server question decides whether keys are made and a server deployed, then the connection is verified, licenses issued, a verifier copied, paid features wrapped for Gated mode, the online check added unless turned off, and everything tested. Each step lists the files and resources it creates.">
+<svg viewBox="0 0 1000 1830" role="img" aria-label="Flowchart of the add-licensing skill: the mode question exits early for OpenSource with only a free license file; otherwise the server question decides whether keys are made and a server deployed, then the connection is verified, licenses issued, a verifier copied, paid features wrapped for Gated mode, the online check added unless turned off, and everything tested. Each step lists the files and resources it creates.">
 <defs>
 <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
 <marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d1453b"/></marker>
@@ -69,7 +69,7 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <text x="450.0" y="133.0" text-anchor="middle" class="lbl">OpenSource</text>
 <rect x="530" y="128.0" width="450" height="24" rx="5" class="chip repo"/>
 <rect x="530" y="128.0" width="5" height="24" rx="2" class="bar repo"/>
-<text x="544" y="144.0" text-anchor="start" class="ct">LICENSE (MIT) in the project, then stop</text>
+<text x="544" y="144.0" text-anchor="start" class="ct">LICENSE (MIT, Apache, BSD), then stop</text>
 <rect x="100.0" y="228.0" width="300" height="58" rx="8" class="node"/>
 <text x="250" y="253.0" text-anchor="middle" class="t1">Q2, Q3, Q6 · App name, language,</text>
 <text x="250" y="271.0" text-anchor="middle" class="t2">paid features (Gated only)</text>
@@ -234,7 +234,7 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <text x="70.0" y="845.0" text-anchor="end" class="lbl warnt">retry</text>
 </svg>
 </div>
-<figcaption>OpenSource leaves after the first question with only an MIT LICENSE. An existing server skips key making and deployment, so the only key the project holds is the root public key it was given. Gated adds the features file and agent pointers; turning the online check off removes everything Step 7 creates.</figcaption>
+<figcaption>OpenSource leaves after the license question with only a free license (MIT, Apache-2.0 or BSD, plus optional DCO and docs license). Paid modes get a proprietary EULA or a source-available license. An existing server skips key making and deployment, so the only key the project holds is the root public key it was given. Gated adds the features file and agent pointers; turning the online check off removes everything Step 7 creates.</figcaption>
 </figure>
 <ul class="notes">
 <li>Keys are made before the deploy (Step 4 before Step 2) because the server needs the signing key and the key list.</li>
