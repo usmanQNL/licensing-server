@@ -87,3 +87,46 @@ fn license_file_location() {
     assert_eq!(find_license_file(app, &dir), dir.join("licensing/a.license.json"));
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn issuer_cases() {
+    use licensing::check_online_reply_for_issuer;
+    let data: Value = serde_json::from_str(&read("cases.json")).unwrap();
+    let now: DateTime<Utc> = DateTime::parse_from_rfc3339(data["now"].as_str().unwrap()).unwrap().with_timezone(&Utc);
+    let keys = [("", data["public_key_pem"].as_str().unwrap())];
+    for c in data["issuer_cases"].as_array().unwrap() {
+        let r = check_online_reply_for_issuer(c["reply"].as_str().unwrap(), &keys, c["license_id"].as_str().unwrap(),
+                                              c["license_issuer_url"].as_str(), now, None);
+        assert_eq!(r.active, c["expect_active"].as_bool().unwrap(), "{}", c["name"]);
+    }
+    // evaluate takes the issuer from the license itself.
+    let lic = data["cases"].as_array().unwrap().iter()
+        .find(|c| c["name"] == "subscription_with_issuer_url").unwrap()["license"].as_str().unwrap();
+    let reply = |name: &str| data["issuer_cases"].as_array().unwrap().iter()
+        .find(|c| c["name"] == name).unwrap()["reply"].as_str().unwrap().to_string();
+    assert!(evaluate(lic, &keys, "subscription", "LIC-1", Some(&reply("same_issuer")), &[], now, None).valid);
+    assert!(!evaluate(lic, &keys, "subscription", "LIC-1", Some(&reply("same_issuer_revoked")), &[], now, None).valid);
+    assert!(evaluate(lic, &keys, "subscription", "LIC-1", Some(&reply("different_issuer")), &[], now, None).valid);
+}
+
+#[test]
+fn license_cache_location() {
+    use licensing::{default_cache_file, find_license_cache, license_cache_env_var, valid_issuer_url};
+    assert_eq!(license_cache_env_var("QuellDAP"), "QUELLDAP_LICENSE_CACHE");
+    assert_eq!(default_cache_file(std::path::Path::new("/a/LIC-1.license.json")), std::path::PathBuf::from("/a/LIC-1.license.cache.json"));
+    assert_eq!(default_cache_file(std::path::Path::new("/a/license.json")), std::path::PathBuf::from("/a/license.cache.json"));
+    let dir = std::env::temp_dir().join(format!("lic-cache-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let app = "RustCacheTestApp";
+    assert_eq!(find_license_cache(app, &dir), std::env::current_dir().unwrap().join("license.cache.json"));
+    std::fs::write(dir.join(".env"), "RUSTCACHETESTAPP_LICENSE_FILE=lic/q.license.json\n").unwrap();
+    assert_eq!(find_license_cache(app, &dir), dir.join("lic/q.license.cache.json"));
+    std::fs::write(dir.join(".env"), "RUSTCACHETESTAPP_LICENSE_FILE=lic/q.license.json\nRUSTCACHETESTAPP_LICENSE_CACHE=cache/c.json\n").unwrap();
+    assert_eq!(find_license_cache(app, &dir), dir.join("cache/c.json"));
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(valid_issuer_url("https://licensing.example.com"));
+    assert!(valid_issuer_url("http://localhost:8080/"));
+    assert!(valid_issuer_url("http://[::1]:8080"));
+    assert!(!valid_issuer_url("http://licensing.example.com"));
+    assert!(!valid_issuer_url("https://"));
+}

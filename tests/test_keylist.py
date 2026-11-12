@@ -45,3 +45,22 @@ def test_key_list_verify_cache_and_rollback():
     # nothing cached and no server
     try: L.load_trusted_keys(root_pem, os.path.join(d, "none.json"), url, timeout=1); raise AssertionError("no error")
     except ValueError: pass
+
+
+def test_old_key_list_only_cache_file_is_still_read(tmp_path):
+    import json
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    root = Ed25519PrivateKey.generate()
+    root_pem = root.public_key().public_bytes(serialization.Encoding.PEM,
+                                              serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    payload = {"v": 1, "issued_at": "2026-11-01T00:00:00Z", "keys": {"k1": "PEM"}, "revoked": []}
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    sig = base64.urlsafe_b64encode(root.sign(canonical)).rstrip(b"=").decode()
+    old = tmp_path / "keys-cache.json"
+    old.write_text(json.dumps({"kid": "root", "payload": payload, "signature": sig}))
+    assert L.load_trusted_keys(root_pem, str(old)) == {"k1": "PEM"}
+    # The same list stored inside the new cache file's "keylist" field.
+    new = tmp_path / "license.cache.json"
+    new.write_text(json.dumps({"v": 1, "keylist": old.read_text()}))
+    assert L.load_trusted_keys(root_pem, str(new)) == {"k1": "PEM"}

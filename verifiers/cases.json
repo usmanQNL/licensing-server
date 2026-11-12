@@ -1,35 +1,35 @@
 {
   "now": "2026-11-10T12:00:00Z",
-  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAUvaVkItjyfklhEhTjYF+QiQ4AtSRZ6xcPW8D7DBVdac=\n-----END PUBLIC KEY-----\n",
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEACe3D/LCS7d15kbp6LByg41cvQCTS/aFALmENgh8Bggk=\n-----END PUBLIC KEY-----\n",
   "cases": [
     {
       "name": "full_valid",
       "mode": "full",
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"full\", \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"u5itUguuMoTCglw5YAbC8UzX29tw8MZoL_nQP7cI4NmefVxYqB1VjeEHDRVarAnX8Nvu1IXZi7n22gB9QGddDw\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"full\", \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"T0mZlu1pQCqcjpHgQQOEfcHrax2iQDX07zevjoeQ4m9YJbDPC0YqC0DBqwAKLTrEgvcWgqoH079t38gPu-WhDA\"}",
       "expect": true
     },
     {
       "name": "full_grace",
       "mode": "full",
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"full\", \"expires_at\": \"2026-11-05T12:00:00Z\"}, \"signature\": \"L5TO0tyw264gjUYJaLisLUpTOAe_oVy4WnKlUJnMNj7BXSvuH_KF_lt78ty1VwvegWREeQh_FFQGtF1UkVGABg\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"full\", \"expires_at\": \"2026-11-05T12:00:00Z\"}, \"signature\": \"wlYt2s5zf6lR3LIW-mGbkS6elNdfBMxW98499tG6suIDRxw8MyJEv7bWWfheUCcMVhs7VPCkxkvZ_If9duk0Dw\"}",
       "expect": true
     },
     {
       "name": "full_expired",
       "mode": "full",
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"full\", \"expires_at\": \"2026-10-21T12:00:00Z\"}, \"signature\": \"UoXlSoNSWdthUdi8eZPOSGDEcH_zvn0tuZzsuwmTrqly6cdflddSLaB1Hywdh8UX-Md_qmKt0TB5tXBznimyAg\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"full\", \"expires_at\": \"2026-10-21T12:00:00Z\"}, \"signature\": \"tmptfD1XhVcGRi-PZL6g0MM_3UooWfEpmjlmFDGFx0li5aCDDHJ7TvQPUjG2tLLJ3DbGhtZV2EV_3K7gK0ORAw\"}",
       "expect": false
     },
     {
       "name": "plan_mismatch",
       "mode": "full",
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"D-QQKjxTXrHb4GNkAohBnx4SD6uL3CGeQo-2QK0_sdo08519PLQNetTnE5UfK1eo1lwqKG9bRNyOWGp4WQOvBg\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"yeMAc8cwVLNsb5po_pLatSbjupVkoHRm3kAuD727xZBPfaGGKw0MyEEISK7wcRpIN4yCBVvfznOuODFvFPTeCA\"}",
       "expect": false
     },
     {
       "name": "tampered",
       "mode": "full",
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"opensource\", \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"u5itUguuMoTCglw5YAbC8UzX29tw8MZoL_nQP7cI4NmefVxYqB1VjeEHDRVarAnX8Nvu1IXZi7n22gB9QGddDw\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"opensource\", \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"T0mZlu1pQCqcjpHgQQOEfcHrax2iQDX07zevjoeQ4m9YJbDPC0YqC0DBqwAKLTrEgvcWgqoH079t38gPu-WhDA\"}",
       "expect": false
     },
     {
@@ -38,7 +38,7 @@
       "features_needed": [
         "sso"
       ],
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"]}, \"signature\": \"-5VMgV6qbXx6GNvaZyRIgemQgHBazyXiozufWjAhlkYLDHLFMwNojZvjVeYLpSzSTjeTMo8kSrqi3MiIN-wwAg\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"]}, \"signature\": \"zC-p5IYEB4CXwGYNKW-FbXRVFI_ejl_Bxsu8nyQsDDOK8lJOeA6UnkY6HwkwOrapw7c3jVrWRBrykm4UE-PnAg\"}",
       "expect": true
     },
     {
@@ -47,7 +47,7 @@
       "features_needed": [
         "sso"
       ],
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"hourly_sync\"]}, \"signature\": \"fnuTOcDFJjcyVJBk_1fnQyUQD6RSeLxvp88Hh0elGG5RQef8R5ozGOuAg6-QmYEIeBK6ZwtaiMNux7YK3KQVDQ\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"hourly_sync\"]}, \"signature\": \"ejCKMT-dMOd0UsRt0lc6YHLahdwyCBN2iHhbf5rz8l3HpTJVZD_ePJLnwzxxX0Co_X2GP1QIebqrAzFbR21TDw\"}",
       "expect": false
     },
     {
@@ -56,7 +56,7 @@
       "features_needed": [
         "sso"
       ],
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"], \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"1kmv3zaR5JEDiMFsBXmX0WG9jgelDGYxvgLQA6eDVkfpacoaXp0diVolV1xiG4ZKDTRZfShxKr08BsmpmrCgAA\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"], \"expires_at\": \"2026-12-10T12:00:00Z\"}, \"signature\": \"CwOz5Oy0Sw1jC6GFx99mMrCU889BxVZIFBye1PaMbKyXjVwMJduXq5Jfa8nOvnR3zI_sUdYsu1O9H1MNhE60CA\"}",
       "expect": true
     },
     {
@@ -65,7 +65,7 @@
       "features_needed": [
         "sso"
       ],
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"], \"expires_at\": \"2026-11-05T12:00:00Z\"}, \"signature\": \"x56WaYHcdbpH3z01Nt5UL4pC9dbAIPt9EZINaeS647kyATSf3PbuSHNRtbqOOLKCLElWskFl6kGPzntio3mlBA\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"], \"expires_at\": \"2026-11-05T12:00:00Z\"}, \"signature\": \"P_jd3lDuTBDVvu52-2pBgMXCC0Dofgb8QhhwUGh618LYkSyD-xtgEXQ4Nmox4NA0frt2MsNik4HW9qZk3oqvBg\"}",
       "expect": true
     },
     {
@@ -74,13 +74,25 @@
       "features_needed": [
         "sso"
       ],
-      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"], \"expires_at\": \"2026-10-21T12:00:00Z\"}, \"signature\": \"WV5vDW1w21qf5UEiK6spQYPf39vOCrOqE1LYXs3q7iDG0D2vMmVI1pFe1aj3wbzCz18PZJVSIaSiuUuIvuFmBA\"}",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"gated\", \"features\": [\"sso\"], \"expires_at\": \"2026-10-21T12:00:00Z\"}, \"signature\": \"GNwv5xdPqehUsC2qAhj99jCoS6eyjdnuYpwZa2ol2DBCzqZkM9PbzU2iVHRwSaHLBEaCisfechoONuwOLJwtDA\"}",
       "expect": false
     },
     {
       "name": "unsupported_version",
       "mode": "opensource",
-      "license": "{\"payload\": {\"v\": 2, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"opensource\"}, \"signature\": \"KfSKmP4X4R_zaTIJi8O-Mp1-HHTCCyrvq91xTd904WqNOJjzv2EJ1uygeAzznPn2RvT3cdSdDsYY2qpHAvHtAw\"}",
+      "license": "{\"payload\": {\"v\": 2, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"opensource\"}, \"signature\": \"2oW5ZezhxZqPLeg6589AHmXH6J14cNd-a98ieh99SD8NL8kPSwtubZQ1s_aLfxR25mV9Hm0qpwExP6M6wligDQ\"}",
+      "expect": false
+    },
+    {
+      "name": "subscription_with_issuer_url",
+      "mode": "subscription",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"subscription\", \"expires_at\": \"2026-12-10T12:00:00Z\", \"issuer_url\": \"https://licensing.example.com\"}, \"signature\": \"a0uyoWJqSTsVU4YTDx_LjpSWihMKnPedaUGIuH65wfomfTUTQamGy__zCKeMIug3oUFTtQoH0P3jmi8u_HL4Dw\"}",
+      "expect": true
+    },
+    {
+      "name": "issuer_url_tampered",
+      "mode": "subscription",
+      "license": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"customer\": \"Example\", \"issued_at\": \"2026-10-11T12:00:00Z\", \"plan\": \"subscription\", \"expires_at\": \"2026-12-10T12:00:00Z\", \"issuer_url\": \"https://evil.example.net\"}, \"signature\": \"a0uyoWJqSTsVU4YTDx_LjpSWihMKnPedaUGIuH65wfomfTUTQamGy__zCKeMIug3oUFTtQoH0P3jmi8u_HL4Dw\"}",
       "expect": false
     },
     {
@@ -88,6 +100,50 @@
       "mode": "full",
       "license": "not json",
       "expect": false
+    }
+  ],
+  "issuer_cases": [
+    {
+      "name": "same_issuer",
+      "license_id": "LIC-1",
+      "license_issuer_url": "https://licensing.example.com",
+      "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T11:00:00Z\", \"valid_until\": \"2026-11-17T11:00:00Z\", \"issuer_url\": \"https://licensing.example.com\"}, \"signature\": \"btfbTTk42dRXgPIdfuaeVUjYJrBurGaAytswhw543SdDekOh_K7Jo0ypzv6rnRbRGfXmGeVohx-GAC_-aXCwDg\"}",
+      "expect_active": true
+    },
+    {
+      "name": "same_issuer_trailing_slash",
+      "license_id": "LIC-1",
+      "license_issuer_url": "https://licensing.example.com",
+      "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T11:00:00Z\", \"valid_until\": \"2026-11-17T11:00:00Z\", \"issuer_url\": \"https://licensing.example.com/\"}, \"signature\": \"AB1isGcDIwS9wPPyULokvte0icDx8QksFggrel41_GGAmpMqJKK__ZD9XcP9bkZ9ANG7Yk9XlZgxntf64PHDAg\"}",
+      "expect_active": true
+    },
+    {
+      "name": "different_issuer",
+      "license_id": "LIC-1",
+      "license_issuer_url": "https://licensing.example.com",
+      "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T11:00:00Z\", \"valid_until\": \"2026-11-17T11:00:00Z\", \"issuer_url\": \"https://evil.example.net\"}, \"signature\": \"MnE_83fADpU1DOgCz76dhBI_CRXbucGGVaHUqWdDTygEXBGrzoTPKQ7TGni1t00mZcR5KRoxF1JwTxfe1pyICA\"}",
+      "expect_active": false
+    },
+    {
+      "name": "old_license_new_reply",
+      "license_id": "LIC-1",
+      "license_issuer_url": null,
+      "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T11:00:00Z\", \"valid_until\": \"2026-11-17T11:00:00Z\", \"issuer_url\": \"https://licensing.example.com\"}, \"signature\": \"btfbTTk42dRXgPIdfuaeVUjYJrBurGaAytswhw543SdDekOh_K7Jo0ypzv6rnRbRGfXmGeVohx-GAC_-aXCwDg\"}",
+      "expect_active": true
+    },
+    {
+      "name": "new_license_old_reply",
+      "license_id": "LIC-1",
+      "license_issuer_url": "https://licensing.example.com",
+      "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"status\": \"active\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T11:00:00Z\", \"valid_until\": \"2026-11-17T11:00:00Z\"}, \"signature\": \"TGw81b70mN0DTX4xhNOc_C03MOtMQ9UG2D96Xl2kfP6Tw6UGfumb_paqnJnYwVA73-KTm9KV93DpGvM0G6zZDQ\"}",
+      "expect_active": true
+    },
+    {
+      "name": "same_issuer_revoked",
+      "license_id": "LIC-1",
+      "license_issuer_url": "https://licensing.example.com",
+      "reply": "{\"payload\": {\"v\": 1, \"license_id\": \"LIC-1\", \"status\": \"revoked\", \"max_installs\": 1, \"checked_at\": \"2026-11-10T11:00:00Z\", \"valid_until\": \"2026-11-17T11:00:00Z\", \"issuer_url\": \"https://licensing.example.com\"}, \"signature\": \"N0ha_qpBqBdx1NXFjlruki2ImVXb_hMd3vmVEYbZeS5z3qmqaq2dJ4EE9NvMovZqx9Xr-tztF33eHwIXBOe9CA\"}",
+      "expect_active": false
     }
   ]
 }

@@ -55,12 +55,15 @@ python issue_license.py --customer "Example Ltd" --application QuellDAP --plan s
   --client-email contact@example.com --client-phone "+44 20 0000 0000" \
   --features sso,hourly_sync --expires-days 365 \
   --key-secret license-signing-key --project YOUR_PROJECT \
+  --issuer-url https://YOUR_SERVICE_URL \
   --firestore-project YOUR_PROJECT
 ```
 
 Or use a local key file with `--key-file private.pem`. Keep that file out of git.
 
 The output is `licenses/<application>/<license_id>.license.json`. Send that file to the customer. With `--firestore-project`, the license is also registered in the `licenses` collection with `status` set to `active`. The contact email and phone are stored in the license store only.
+
+`--issuer-url` signs the licensing server's URL into the license as `issuer_url`, so the app knows where to send its online check and can't be pointed elsewhere (default: `LICENSE_ISSUER_URL` from the environment or `.env`). Use the same URL as the server's `LICENSE_ISSUER_URL`. It must be `https` (`http` only for `localhost`). Licenses issued without it stay valid and use the app's configured server URL.
 
 `--client-email` is required. `--kid` sets the signing key ID (default `k1`), and `--max-installs` sets the seat limit (default 1). Before writing, the issuer reads `keylist.json` (or `--keylist PATH`) and warns if the kid is missing from it or revoked, so you can upload a new key list first.
 
@@ -109,7 +112,7 @@ To block a compromised kid, add `--revoked k1` (or whichever kid).
 `python regenerate_licenses.py --firestore-project YOUR_PROJECT --new-kid k2 --key-file private-k2.pem --dry-run`
 The database is not changed.
 
-The Python and Node verifiers fetch and cache the list: `load_trusted_keys(root_pem, cache_path=..., endpoint=...)` in Python, and `loadTrustedKeys(rootPem, {cachePath, endpoint})` in Node. Each list is verified with the root key. A list older than the cached one is ignored, so an old list can't undo a revocation. Rust and Dart don't have this yet.
+The Python and Node verifiers fetch and cache the list: `load_trusted_keys(root_pem, cache_path=..., endpoint=...)` in Python, and `loadTrustedKeys(rootPem, {cachePath, endpoint})` in Node. Pass the license cache path (below); the list is kept in that file's `keylist` field. An older cache file that holds only the bare list still works. Each list is verified with the root key. A list older than the cached one is ignored, so an old list can't undo a revocation. Rust and Dart don't have this yet.
 
 Only the root key needs an app update if it is ever compromised.
 
@@ -136,6 +139,24 @@ Every verifier has the lookup:
 | Node.js | `findLicenseFile('QuellDAP', '.')` |
 | Rust | `find_license_file("QuellDAP", Path::new("."))` |
 | Dart | `licenseFileEnvVar('QuellDAP')` and `parseDotenv(text)` (read `.env` your own way, e.g. with `flutter_dotenv`) |
+
+### Where the app keeps what it fetches
+
+Everything the app gets from the server lives in one cache file: the last signed check reply, `install_hash`, `install_token`, `last_seen` and the signed key list. Its location is a second variable in the same `.env`:
+
+```bash
+QUELLDAP_LICENSE_FILE=/srv/quelldap/license.json
+QUELLDAP_LICENSE_CACHE=/srv/quelldap/license.cache.json
+```
+
+When `<APP_NAME>_LICENSE_CACHE` is unset, the cache sits next to the license file and is named after it (`license.json` gives `license.cache.json`). Pick a folder the app can write to. Keep `*.cache.json` out of git: `install_token` is in it. A missing or damaged cache is treated as empty. The format is in SPEC.md section 5a.
+
+| Language | Call |
+|---|---|
+| Python | `find_license_cache("QuellDAP", project_root=".")` |
+| Node.js | `findLicenseCache('QuellDAP', '.')` |
+| Rust | `find_license_cache("QuellDAP", Path::new("."))` |
+| Dart | `licenseCacheEnvVar('QuellDAP')` and `defaultCacheFile(licensePath)` |
 
 ### Python
 
@@ -238,7 +259,24 @@ curl -s -X POST "https://YOUR_SERVICE_URL/v1/check" \
 
 For one decision that combines the license and the online check, call `evaluate` (Python) or `evaluate` (Node). It returns off when the local license is invalid, or when a fresh reply says `revoked`, `unknown`, or `limit_reached`. With no reply, or a reply past `valid_until`, the local license decides, so offline use keeps working.
 
-To check the reply on its own, use `check_online_reply` (Python) or `checkOnlineReply` (Node) from the verifiers. They check the reply's signature, the license ID, and `valid_until`. Cache the last reply text yourself, and reuse it when the server is unreachable, until `valid_until` passes.
+**Where the check goes:** to the license's `issuer_url`. A license without one uses the server URL from the app's settings. The server signs its own URL (`LICENSE_ISSUER_URL`) into every reply as `issuer_url`, and the verifier rejects a reply whose `issuer_url` differs from the license's. Older licenses and servers without the field skip that comparison.
+
+**Signed, not encrypted:** license files, replies and key lists are plain JSON that anyone can read. The Ed25519 signature means they can't be changed without detection. There is nothing to decrypt.
+
+**The helper:** `refresh_online_status(license_text, keys, cache_path, endpoint=SERVER_URL)` in Python, or `await refreshOnlineStatus(licenseText, keys, { cachePath, endpoint })` in Node, does the whole check. It sends the request at most once a day, stores `install_hash`, `install_token`, the reply and `last_seen` in the cache file, and falls back to the cached reply when the server is unreachable. It never throws for network errors. Pass its result to `evaluate`:
+
+```python
+cache = find_license_cache("QuellDAP")
+keys = load_trusted_keys(ROOT_PUBLIC_PEM, cache_path=cache, endpoint=SERVER_URL)
+online = refresh_online_status(license_text, keys, cache, endpoint=SERVER_URL)
+result = evaluate(license_text, keys, "subscription", lic_id, reply_text=online.reply_text, last_seen=online.last_seen)
+```
+
+To check a reply on its own, use `check_online_reply` (Python, with `issuer_url=`), `checkOnlineReply` (Node, with `issuerUrl`) or `check_online_reply_for_issuer` (Rust). They check the reply's signature, the license ID, the issuer and `valid_until`. A cached reply is reused only until `valid_until` passes.
+
+**Offline and air-gapped use:** with no network at all, the app runs on the license alone until `expires_at` (plus the 14-day grace period). A revoke only takes effect at the next successful check, so an install that never goes online is never revoked early.
+
+**Moving the server:** `issuer_url` is signed into each license, so a new domain needs either a redirect from the old URL or reissued licenses (`python regenerate_licenses.py ... --issuer-url https://NEW_URL`).
 
 **Install tokens:** the first check from a new install returns an `install_token` once, in the signed reply. Store it, and send it as `install_token` on every later check. A check for a known install without the right token gets HTTP 403.
 
@@ -258,7 +296,7 @@ Let users turn the online check off in settings.
 ## Privacy and data retention
 
 What the server stores:
-- `licenses`: license ID, customer name, contact email and phone (when given), application, plan, features, seat limit, dates, and status.
+- `licenses`: license ID, customer name, contact email and phone (when given), application, plan, features, seat limit, dates, issuer URL, and status.
 - `installs`: license ID, a random install ID (`install_hash`), first and last seen times, and a SHA-256 hash of the install token. It never stores the token itself.
 
 What it doesn't store: names, emails, IP addresses, or machine identifiers. Customer names are only in the `licenses` records you create.
@@ -458,11 +496,11 @@ On Windows, replace `$(...)` with the number printed by `gcloud projects describ
 
 **2. Deploy:**
 ```
-gcloud run deploy license-check --source . --region europe-west1 --project pigeonholes-license-server --allow-unauthenticated --min-instances 0 --set-env-vars "LICENSE_STORAGE=firestore,LICENSE_FIRESTORE_PROJECT=pigeonholes-license-server,LICENSE_KID=k1,LICENSE_SIGNING_KEY_PATH=" --set-secrets LICENSE_SIGNING_KEY=license-signing-key:latest
+gcloud run deploy license-check --source . --region europe-west1 --project pigeonholes-license-server --allow-unauthenticated --min-instances 0 --set-env-vars "LICENSE_STORAGE=firestore,LICENSE_FIRESTORE_PROJECT=pigeonholes-license-server,LICENSE_KID=k1,LICENSE_SIGNING_KEY_PATH=,LICENSE_ISSUER_URL=https://YOUR_SERVICE_URL" --set-secrets LICENSE_SIGNING_KEY=license-signing-key:latest
 ```
 Keep `LICENSE_SIGNING_KEY_PATH=` (empty). `.env` is copied into the image and sets `LICENSE_SIGNING_KEY_PATH=private.pem`, which doesn't exist on Cloud Run. The empty value overrides it, so the key comes from Secret Manager.
 
-**3. Check it:** get the URL with `gcloud run services describe license-check --region europe-west1 --format="value(status.url)"`, then run the three checks in SKILL.md Step 1b.
+**3. Check it:** get the URL with `gcloud run services describe license-check --region europe-west1 --format="value(status.url)"`, then run the three checks in SKILL.md Step 3. On the first deploy you don't know the URL yet: deploy, read the URL, then deploy again with `LICENSE_ISSUER_URL` set to it (or to your own domain, if you map one).
 
 Redeploy with the same command after each change. Run `gcloud run revisions list --service license-check --region europe-west1` to see past revisions.
 
@@ -490,6 +528,7 @@ Configuration (environment variables):
 | `LICENSE_KID` | The `kid` written into every signed reply (default `k1`) |
 | `LICENSE_RATE_LIMIT_PER_MIN` | Checks per minute per client IP (default 60) |
 | `LICENSE_KEYLIST_PATH` | Path to the signed key list served at `GET /v1/keys` (optional) |
+| `LICENSE_ISSUER_URL` | This server's public URL, signed into every reply as `issuer_url`, and the default `--issuer-url` for `issue_license.py` (optional; no trailing `/`) |
 
 Run locally:
 

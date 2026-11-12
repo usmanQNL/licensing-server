@@ -45,6 +45,8 @@ Every server finds the license through `APP_NAME` (default `Demo`) and `<APP_NAM
 { "error": "feature_not_licensed", "feature": "export_pdf", "reason": "the license does not include this feature" }
 ```
 
+The samples check the license file offline only. Licenses can also carry a signed `issuer_url` (the licensing server's URL), and the samples ignore it. To add the daily online check, call the verifier's `refresh_online_status` (Python) or `refreshOnlineStatus` (Node) at startup and pass its reply to `evaluate`. It keeps everything it fetches in the cache file named by `<APP_NAME>_LICENSE_CACHE` in the same `.env`, or next to the license file when that is unset (README, "Where the app keeps what it fetches").
+
 These servers check one installed license, which fits a self-hosted app (each customer runs your server with their license). For a multi-tenant SaaS, store each customer's license with their account and load that one in the gate instead of a single file.
 
 In a vanilla JS page, call the server the same way: `const plan = await (await fetch('/license/plan')).json();`, then hide what `plan.features` marks as disabled.

@@ -41,7 +41,7 @@ Ask only what the chosen mode needs.
 2. **Application name**, for example `QuellDAP`. Used in license folders, the license record, and the `.env` variable that holds the license file's location (`QUELLDAP_LICENSE_FILE`, see Step 6).
 3. **Language**: Python, Node.js, Rust, or Dart/Flutter (untested).
 4. **Licensing server.** Does the user already run one? If yes, get its endpoint URL and its root public key (or its key list URL), and skip Step 2. If no, deploy this repo's server in Step 2.
-5. **Online check?** On by default. Users can turn it off. If on, the endpoint URL from question 4.
+5. **Online check?** On by default. Users can turn it off. If on, the endpoint URL from question 4. That URL is also the **issuer URL**: it is signed into every license (`issuer_url`) and every server reply, so the app knows where to check and can't be pointed at another server. It must be `https` (`http` only for `localhost`).
 6. **Gated features** (Gated mode only). List each paid feature. For each one get a **feature ID**, a short description and the code it will guard. The feature ID is the exact lowercase string that goes into the license's `features` list and into the verifier's feature check, for example `sso`, `hourly_sync`, `online_update`. It must never change once a license has been issued with it. Free features are not listed.
 7. **Repositories and where things live.** The name (and URL, if any) of the app's repository, and of the licensing server's repository or deploy location if it has one. The cloud project (or other host) for the server, the license store and the signing secret, if those exist.
 
@@ -53,7 +53,9 @@ Follow `README.md`. It covers the storage backend (Firestore or any NoSQL databa
 
 Make the root key and the signing key (Step 4) before deploying, because the server needs the signing key and the key list.
 
-**Record:** the server repository or source folder, the host and region, the service name, the storage backend and its project or path, the environment variable names (not secret values), the deploy commands exactly as run, and the resulting endpoint URL.
+Set `LICENSE_ISSUER_URL` on the server to its public URL, with no trailing slash. The server signs it into every reply as `issuer_url`, and `issue_license.py` reads the same variable as its default `--issuer-url`.
+
+**Record:** the server repository or source folder, the host and region, the service name, the storage backend and its project or path, the environment variable names (not secret values), the deploy commands exactly as run, the resulting endpoint URL, and the `LICENSE_ISSUER_URL` value.
 
 ## Step 3: verify the server connection (required before going on)
 
@@ -70,7 +72,7 @@ Replace `SERVER` with the endpoint URL, with no trailing slash.
    curl -sS -o keylist-from-server.json -w "%{http_code}\n" https://SERVER/v1/keys
    ```
    HTTP 503 means the server has no `LICENSE_KEYLIST_PATH` set yet. Fix that on the server, then retry.
-3. **Signed check reply.** Send a test license ID that does not exist. Expect HTTP 200 and a reply with `"status": "unknown"` and a `signature`. Verify it with the server's signing public key (`check_online_reply` or `checkOnlineReply`). Nothing is stored for an unknown license.
+3. **Signed check reply.** Send a test license ID that does not exist. Expect HTTP 200 and a reply with `"status": "unknown"`, a `signature`, and `"issuer_url"` equal to `SERVER` (if it's missing, set `LICENSE_ISSUER_URL` on the server). Verify it with the server's signing public key (`check_online_reply` or `checkOnlineReply`). Nothing is stored for an unknown license.
    ```bash
    curl -sS -X POST https://SERVER/v1/check \
      -H "Content-Type: application/json" \
@@ -121,11 +123,15 @@ Use `issue_license.py` (in this repo). Run `python issue_license.py --help` for 
 
 Each issue needs exactly one key source: `--key-secret NAME --project PROJECT` (reads Secret Manager at run time), or `--key-file PATH` for a local PEM. It also needs `--customer`, `--application`, `--plan`, and `--client-email`. `--client-phone` is optional. Contact details are stored in the license store only, never in the file.
 
+Pass `--issuer-url SERVER` (or set `LICENSE_ISSUER_URL`) so the license carries the server's URL, signed. Use the same value as the server's `LICENSE_ISSUER_URL`. Leave it out only for licenses that never check online. Licenses issued without it stay valid and use the app's configured server URL.
+
+Nothing in the file is encrypted. It is readable JSON with a signature, so the customer can see what it grants but cannot change it.
+
 The license is a JSON file with `kid`, `payload` and `signature`. The application name is not in the file. The output goes to `licenses/<application>/<license_id>.license.json` by default, or to `--out PATH`.
 
 **Delivering the file.** Send the `.license.json` file to the customer through your normal channel, and tell them where the app expects it: the path in `<APP_NAME>_LICENSE_FILE` in the app's `.env` (Step 6), or tell them to set that variable to wherever they put the file. Never commit `licenses/` or `*.license.json` to git.
 
-**Record:** the `issue_license.py` command as a reusable template (with placeholders for the customer and contact details), the output folder, where the app expects the license file, and one row per issued license (license ID, plan, features, expiry). Never the customer's email or phone.
+**Record:** the `issue_license.py` command as a reusable template (with placeholders for the customer and contact details), the issuer URL used, the output folder, where the app expects the license file, and one row per issued license (license ID, plan, features, expiry). Never the customer's email or phone.
 
 ## Step 6: add the verifier
 
@@ -153,7 +159,17 @@ Do this in the target project:
 
 A real environment variable overrides `.env`, so an installed app or a server can point at a license somewhere else without editing the file.
 
-Trust a key list (recommended) or one key. Use `load_trusted_keys` (Python) or `loadTrustedKeys` (Node) with the root public key, the server URL and a cache path. Rust and Dart take a fixed `{kid: PEM}` map. Each verifier:
+### Where the app keeps what it fetches (`.env`: `<APP_NAME>_LICENSE_CACHE`)
+
+The online check reply, `install_hash`, `install_token`, `last_seen` and the cached key list all live in one cache file (SPEC.md section 5a). Its location is the second variable in the same `.env`:
+
+- **Name:** `<APP_NAME>_LICENSE_CACHE`, same naming rule (`QUELLDAP_LICENSE_CACHE`).
+- **Value:** the cache file's full path, for example `QUELLDAP_LICENSE_CACHE=C:/apps/quelldap/license.cache.json`. A relative path resolves against the project root. Pick a folder the app can write to.
+- **Fallback:** when unset, the file sits next to the license file, named after it (`license.json` gives `license.cache.json`).
+
+Add the line to `.env` and `.env.example`, and add `*.cache.json` to `.gitignore`. Find it with `find_license_cache(app_name, project_root)` (Python, Rust) or `findLicenseCache(appName, projectRoot)` (Node). Dart has `licenseCacheEnvVar` and `defaultCacheFile`. The app creates the file on the first check, and a missing or damaged file is treated as empty.
+
+Trust a key list (recommended) or one key. Use `load_trusted_keys` (Python) or `loadTrustedKeys` (Node) with the root public key, the server URL and the license cache path (it keeps the list in that file's `keylist` field). Rust and Dart take a fixed `{kid: PEM}` map. Each verifier:
 1. Picks the key for the file's `kid` and verifies the signature. Rejects anything that fails.
 2. Rejects unknown `v` values.
 3. Checks the plan matches the chosen mode.
@@ -174,14 +190,17 @@ For Gated mode, do this in the project:
 
    ```python
    import json
-   from licensing import load_trusted_keys, evaluate, find_license_file
+   from licensing import load_trusted_keys, evaluate, find_license_file, find_license_cache, refresh_online_status
 
    license_path = find_license_file("QuellDAP", project_root=APP_ROOT)  # QUELLDAP_LICENSE_FILE from .env
    license_text = open(license_path, encoding="utf-8").read()            # the customer's .license.json
    lic_id = json.loads(license_text)["payload"]["license_id"]
-   keys = load_trusted_keys(ROOT_PUBLIC_PEM, cache_path=CACHE_PATH, endpoint=SERVER_URL)
+   cache_path = find_license_cache("QuellDAP", project_root=APP_ROOT)      # QUELLDAP_LICENSE_CACHE from .env
+   keys = load_trusted_keys(ROOT_PUBLIC_PEM, cache_path=cache_path, endpoint=SERVER_URL)
+   online = refresh_online_status(license_text, keys, cache_path, endpoint=SERVER_URL)  # Step 7; skip if off
 
-   result = evaluate(license_text, keys, mode="gated", license_id=lic_id, features_needed=["online_update"])
+   result = evaluate(license_text, keys, mode="gated", license_id=lic_id, features_needed=["online_update"],
+                     reply_text=online.reply_text, last_seen=online.last_seen)
    if result.valid_for_paid_features:
        run_online_update()
    else:
@@ -192,19 +211,24 @@ For Gated mode, do this in the project:
 
 Always test a valid license, an expired one, a tampered one, a wrong plan and a missing feature. Use the shared cases in `verifiers/cases.json`.
 
-**Record:** the verifier's path in the project, the `<APP_NAME>_LICENSE_FILE` variable name and its value, that `.env` is gitignored and `.env.example` has the line, where the app loads the license at startup, the root public key path, the key list cache path, and for Gated the final guarded code for each feature ID.
+**Record:** the verifier's path in the project, the `<APP_NAME>_LICENSE_FILE` and `<APP_NAME>_LICENSE_CACHE` variable names and values, that `.env` and `*.cache.json` are gitignored and `.env.example` has both lines, where the app loads the license at startup, the root public key path, and for Gated the final guarded code for each feature ID.
 
 ## Step 7: online check (optional, on by default)
 
-If on, the app calls `POST {endpoint}/v1/check` once a day with `license_id` and `install_hash`. `install_hash` is a random ID the app creates once and stores locally. It holds no personal data.
+If on, the app calls `POST {server}/v1/check` once a day with `license_id` and `install_hash`. `{server}` is the license's signed `issuer_url`; a license without one uses the app's configured server URL. `install_hash` is a random ID the app creates once. It holds no personal data.
 
-- The first reply includes an `install_token`. Store it and send it on every later check. Without it, the server returns HTTP 403.
-- Check the reply with `check_online_reply` (Python) or `checkOnlineReply` (Node). Combine it with the license using `evaluate`. Pass `last_seen` (the newest time the app has seen) so setting the clock back can't extend anything.
-- Cache the last valid reply and reuse it while the server is unreachable, until its `valid_until`.
+How it works, so you can explain it to the user:
+- **Fetch:** the app sends the request. The server looks up the license and seats and replies with a signed status (`active`, `revoked`, `unknown` or `limit_reached`), `checked_at`, `valid_until` (7 days by default) and `issuer_url`. The first reply for a new install also carries an `install_token`, once. Every later check must send it, or the server returns HTTP 403.
+- **Signed, not encrypted:** the reply is readable JSON. The app verifies its Ed25519 signature with the same public key as the license (matched by `kid`), checks `license_id`, checks `issuer_url` matches the license's, and checks `valid_until`. Nothing is decrypted.
+- **Cache:** the last valid reply, `install_hash`, `install_token` and `last_seen` are kept in the license cache file (`<APP_NAME>_LICENSE_CACHE`, Step 6).
+- **Offline:** when the server can't be reached, the cached reply is used until its `valid_until`, then the license alone decides (with its 14-day grace period). An app with no network at all runs on the license until it expires. A revoke only takes effect at the next successful check.
+
+Use the helper, which does all of the above: `refresh_online_status(license_text, keys, cache_path, endpoint=SERVER_URL)` in Python, `await refreshOnlineStatus(licenseText, keys, { cachePath, endpoint })` in Node. It checks at most once a day, never throws for network errors, and returns the reply and `last_seen` to pass to `evaluate`. Rust and Dart have no network helper: send the request yourself, keep the same cache file (SPEC.md section 5a), and check replies with `check_online_reply_for_issuer` (Rust) so the issuer match applies.
+
 - `revoked`, `unknown` and `limit_reached` turn paid features off at the next successful check. Sign-in is never blocked.
 - Let users turn this off in settings. Never hard-code the endpoint URL.
 
-**Record:** on or off, the endpoint, the settings key that turns it off, where `install_hash`, `install_token` and the cached reply are stored, and the check interval.
+**Record:** on or off, the issuer URL in the licenses, the fallback endpoint setting, the settings key that turns it off, the cache file path (`<APP_NAME>_LICENSE_CACHE`), and the check interval.
 
 ## Step 8: test
 
@@ -223,7 +247,7 @@ The shared cases in `verifiers/cases.json` and the online replies in `verifiers/
 - Licensing is a deterrent, not DRM. A check on the user's machine can always be bypassed. Say so in the project docs.
 - Use only the mode the user chose. Don't add checks they didn't ask for.
 - App stores may require in-app purchase for paid digital features on iOS and Android. Check before adding licensing to a mobile app.
-- The license file's location goes in `.env` as `<APP_NAME>_LICENSE_FILE`, never hard-coded. Keep `.env` and license files out of git.
+- The license file's location goes in `.env` as `<APP_NAME>_LICENSE_FILE`, and the cache file's as `<APP_NAME>_LICENSE_CACHE`, never hard-coded. Keep `.env`, license files and cache files out of git.
 - Keep `licensing/licensing.md` current. It is the single source of truth for this project's licensing, and the next agent starts from it.
 
 ## Template: `licensing/licensing.md`
@@ -296,9 +320,9 @@ Key list files: `keys.json` at <path>, `keylist.json` at <path> (and on the serv
 | <path to verifier> | license verifier |
 | <path to root-public.pem> | trusted root public key shipped in the app |
 | <app settings file / key> | server endpoint and online-check setting |
-| `.env` | `<APP_NAME>_LICENSE_FILE=<full/path/license.json>` (gitignored, created if missing) |
+| `.env` | `<APP_NAME>_LICENSE_FILE=<full/path/license.json>` and `<APP_NAME>_LICENSE_CACHE=<full/path/license.cache.json>` (gitignored, created if missing) |
 | `.env.example` | the same variable, committed, so setup shows it |
-| `.gitignore` | ignores `.env`, `license.json`, `*.license.json`, `keys/`, `licenses/`, private key patterns |
+| `.gitignore` | ignores `.env`, `license.json`, `*.license.json`, `*.cache.json`, `keys/`, `licenses/`, private key patterns |
 | <AGENTS.md / other agent files> | pointer to this record |
 | <...> | <...> |
 
@@ -319,7 +343,7 @@ curl -sS -X POST <SERVER>/v1/check -H "Content-Type: application/json" -d '{"lic
 <command>
 
 # Step 5: issue a license (template)
-python issue_license.py <key source> --customer "<CUSTOMER>" --application <app> --plan <plan> --client-email "<EMAIL>" <other options as used>
+python issue_license.py <key source> --customer "<CUSTOMER>" --application <app> --plan <plan> --client-email "<EMAIL>" --issuer-url <SERVER> <other options as used>
 
 # Manage licenses
 python license_admin.py <list / show / revoke / reinstate> <...>
@@ -333,17 +357,19 @@ python license_admin.py <list / show / revoke / reinstate> <...>
 | Where the license is loaded at startup | <file:function> |
 | License file variable (in `.env`) | <QUELLDAP_LICENSE_FILE> |
 | License file location (its value, a full path) | <C:/apps/quelldap/license.json> |
-| Key list cache path | <path> |
+| License cache variable (in `.env`) | <QUELLDAP_LICENSE_CACHE> |
+| License cache location (its value, a full path) | <C:/apps/quelldap/license.cache.json> |
 
 ## Online check
 
 | Item | Value |
 |---|---|
 | Enabled | <yes / no> |
-| Endpoint | <SERVER>/v1/check |
+| Issuer URL (signed into licenses and replies) | <SERVER> |
+| Fallback endpoint setting (licenses without issuer_url) | <settings key> |
 | Interval | <once a day> |
 | Setting that turns it off | <settings key> |
-| Where install_hash, install_token and the cached reply are stored | <path> |
+| Cache file (install_hash, install_token, cached reply, last_seen, key list) | <path from QUELLDAP_LICENSE_CACHE> |
 
 ## Gated features
 

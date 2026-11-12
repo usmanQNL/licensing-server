@@ -64,3 +64,23 @@ def test_legacy_full_plan_is_alias_of_subscription():
         new = verify_license(*args, "subscription", **kwargs)
         assert old.valid_for_paid_features == new.valid_for_paid_features, case["name"]
         assert old.valid_for_paid_features == case["expect"], case["name"]
+
+
+def test_issuer_cases():
+    # A reply must come from the license's issuer_url when both name one (SPEC.md section 5).
+    for case in CASES["issuer_cases"]:
+        result = check_online_reply(case["reply"], CASES["public_key_pem"], case["license_id"],
+                                    now=NOW, issuer_url=case["license_issuer_url"])
+        assert result.active == case["expect_active"], case["name"]
+
+
+def test_evaluate_ignores_reply_from_another_issuer():
+    from licensing import evaluate
+    lic = next(c for c in CASES["cases"] if c["name"] == "subscription_with_issuer_url")["license"]
+    by_name = {c["name"]: c["reply"] for c in CASES["issuer_cases"]}
+    pem = CASES["public_key_pem"]
+    assert evaluate(lic, pem, "subscription", "LIC-1", reply_text=by_name["same_issuer"], now=NOW).valid_for_paid_features
+    assert not evaluate(lic, pem, "subscription", "LIC-1", reply_text=by_name["same_issuer_revoked"],
+                        now=NOW).valid_for_paid_features
+    # A revoke signed for another server is not trusted for this license, so the local license decides.
+    assert evaluate(lic, pem, "subscription", "LIC-1", reply_text=by_name["different_issuer"], now=NOW).valid_for_paid_features

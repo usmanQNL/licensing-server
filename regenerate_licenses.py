@@ -3,8 +3,9 @@
 
 Reads the active licenses from the storage backend and writes new signed license files. The
 backend is read only: nothing is written back. Each license keeps its license_id, customer, plan, features,
-max_installs, issued_at and expires_at, so a customer's entitlement does not change. Only the
-signature and kid change.
+max_installs, issued_at, expires_at and issuer_url, so a customer's entitlement does not change. Only the
+signature and kid change. --issuer-url moves every license to a new server URL (for example after
+a domain change); licenses issued without an issuer_url get it too.
 
 Retention: licenses that expired more than 30 days ago are skipped (SPEC retention policy).
 
@@ -36,7 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app.storage import build_admin_storage  # noqa: E402
 
 RETENTION_AFTER_EXPIRY = timedelta(days=30)
-PAYLOAD_FIELDS = ("license_id", "customer", "plan", "features", "max_installs", "issued_at", "expires_at")
+PAYLOAD_FIELDS = ("license_id", "customer", "plan", "features", "max_installs", "issued_at", "expires_at", "issuer_url")
 
 
 def canonical_bytes(payload: dict) -> bytes:
@@ -73,8 +74,10 @@ def load_active_licenses(args) -> list:
     return store.list_licenses(status="active", application=args.application)
 
 
-def build_payload(doc: dict) -> dict:
+def build_payload(doc: dict, issuer_url: str = "") -> dict:
     payload = {k: doc[k] for k in PAYLOAD_FIELDS if doc.get(k) is not None}
+    if issuer_url:
+        payload["issuer_url"] = issuer_url
     payload.setdefault("features", [])
     payload.setdefault("max_installs", 1)
     payload["v"] = 1
@@ -93,8 +96,16 @@ def main():
     key.add_argument("--key-secret", help="Secret Manager secret holding the new PEM.")
     p.add_argument("--project", help="Google Cloud project for --key-secret.")
     p.add_argument("--out-dir", help="Output folder. Default: licenses/<application>/<new-kid>/")
+    p.add_argument("--issuer-url", default="",
+                   help="Write this server URL as issuer_url in every reissued license (domain change). "
+                        "Default: keep each license's stored issuer_url.")
     p.add_argument("--dry-run", action="store_true", help="Count and list what would be written. Write nothing.")
     args = p.parse_args()
+    args.issuer_url = args.issuer_url.strip().rstrip("/")
+    if args.issuer_url:
+        from issue_license import valid_issuer_url
+        if not valid_issuer_url(args.issuer_url):
+            p.error("--issuer-url must be an https URL (http is allowed only for localhost)")
 
     now = datetime.now(timezone.utc)
     docs = load_active_licenses(args)
@@ -125,7 +136,7 @@ def main():
 
     contacts = []
     for doc in to_issue:
-        payload = build_payload(doc)
+        payload = build_payload(doc, args.issuer_url)
         signature = key_obj.sign(canonical_bytes(payload))
         path = os.path.join(out_dir, f"{payload['license_id']}.license.json")
         with open(path, "w", encoding="utf-8") as f:
@@ -147,6 +158,9 @@ def main():
     print(f"wrote {len(to_issue)} license files to {out_dir}")
     print(f"contact list: {contacts_path} (contains personal data, keep it off git)")
     print("The database was not changed.")
+    if args.issuer_url:
+        print(f"Note: the stored records still hold the old issuer_url. Update them to {args.issuer_url} "
+              "in the storage console if you want later reissues to keep it.")
 
 
 if __name__ == "__main__":
