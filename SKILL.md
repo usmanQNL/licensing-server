@@ -57,7 +57,7 @@ Ask only what the chosen mode needs.
 
 ## Step 2: deploy the server (only if there is no server yet)
 
-Follow `README.md`. It covers the storage backend (Firestore or any NoSQL database), the signing key in Secret Manager, the Cloud Run deploy and the environment variables. Manage licenses with `license_admin.py` (list, show, revoke, reinstate) or in the storage console. Any backend works with `--firestore-project` or `--json-path`.
+Follow `README.md`. It covers the storage backend (Firestore or any NoSQL database), the signing key in Secret Manager, the Cloud Run deploy and the environment variables. Manage licenses with the `admin/` scripts (`.bat` on Windows, `.sh` elsewhere: list, show, issue, revoke, reinstate, purge, regenerate, sign key list), `license_admin.py`, or the storage console. Any backend works with `--firestore-project` or `--json-path`.
 
 Make the root key and the signing key (Step 4) before deploying, because the server needs the signing key and the key list.
 
@@ -129,7 +129,7 @@ Put only `root-public.pem` in the app. Never the root private key, and never the
 
 Use `issue_license.py` (in this repo). Run `python issue_license.py --help` for all options.
 
-Each issue needs exactly one key source: `--key-secret NAME --project PROJECT` (reads Secret Manager at run time), or `--key-file PATH` for a local PEM. It also needs `--customer`, `--application`, `--plan`, and `--client-email`. `--client-phone` is optional. Contact details are stored in the license store only, never in the file.
+Each issue needs one key source: `--key-secret NAME --project PROJECT` (reads the cloud secret store at run time; allowed only when `gcloud`, the AWS CLI or the Azure CLI is installed and signed in), or `--key-file PATH` for a local PEM. With neither flag, `LICENSE_SIGNING_KEY_FILE` or `LICENSE_SECRET_NAME` from the environment or `.env` is used. It also needs `--customer`, `--application`, `--plan`, and `--client-email`. `--client-phone` is optional. Contact details are stored in the license store only, never in the file.
 
 Pass `--issuer-url SERVER` (or set `LICENSE_ISSUER_URL`) so the license carries the server's URL, signed. Use the same value as the server's `LICENSE_ISSUER_URL`. Leave it out only for licenses that never check online. Licenses issued without it stay valid and use the app's configured server URL.
 

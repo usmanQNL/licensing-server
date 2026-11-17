@@ -26,14 +26,13 @@ import csv
 import json
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from app.keysource import KeySourceError, load_signing_key  # noqa: E402
 from app.storage import build_admin_storage  # noqa: E402
 
 RETENTION_AFTER_EXPIRY = timedelta(days=30)
@@ -49,18 +48,10 @@ def b64url(data: bytes) -> str:
 
 
 def load_key(args) -> Ed25519PrivateKey:
-    if args.key_file:
-        with open(args.key_file, "rb") as f:
-            pem = f.read()
-    else:
-        cmd = ["gcloud", "secrets", "versions", "access", "latest", "--secret", args.key_secret]
-        if args.project:
-            cmd += ["--project", args.project]
-        pem = subprocess.run(cmd, check=True, capture_output=True).stdout
-    key = serialization.load_pem_private_key(pem, password=None)
-    if not isinstance(key, Ed25519PrivateKey):
-        sys.exit("error: the signing key must be Ed25519")
-    return key
+    try:
+        return load_signing_key(args.key_file, args.key_secret, args.project)
+    except KeySourceError as e:
+        sys.exit(f"error: {e}")
 
 
 def parse_time(value):
