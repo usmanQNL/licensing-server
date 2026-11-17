@@ -47,18 +47,45 @@ Add `SKILL.md` to your Claude skills (claude.ai: Capabilities, then Skills). In 
 
 ## Manage licenses
 
-`license_admin.py` lists, shows, revokes, and reinstates licenses. Pick the backend with `--firestore-project` or `--json-path`:
+The `admin/` folder has one script per task, as a `.bat` for Windows and a `.sh` for Linux and Mac. They read `.env` in the repo root (copy `.env.example`), so the storage backend and Firestore project come from `LICENSE_STORAGE` and `LICENSE_FIRESTORE_PROJECT`, not from flags. They run from the repo root.
 
-```bash
-python license_admin.py --firestore-project YOUR_PROJECT list
-python license_admin.py --firestore-project YOUR_PROJECT show LIC-...
-python license_admin.py --firestore-project YOUR_PROJECT revoke LIC-...      # asks to confirm
-python license_admin.py --firestore-project YOUR_PROJECT reinstate LIC-...
+They run only inside a Python virtual environment: the active one, else `.venv` or `venv` in the repo root. Without one, or if it lacks the dependencies, they stop and run nothing. Create it once:
+
+```bat
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
-Add `--dry-run` to see what would change without changing it. Add `--yes` to skip the prompt in scripts.
+On Linux and Mac: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 
-To preview an issue without writing anything, add `--dry-run` to `issue_license.py`.
+| Script | What it does |
+|---|---|
+| `list-licenses` | List licenses: id, status, plan, application, customer, expiry. `--status revoked`, `--application NAME` filter. |
+| `show-license LIC-...` | Show every stored field of one license. |
+| `issue-license ...` | Issue and register a license. With no arguments it prints the options. |
+| `revoke-license LIC-...` | Revoke. The next online check refuses the license. Asks to confirm. |
+| `reinstate-license LIC-...` | Set a revoked license back to active. Asks to confirm. |
+| `purge-expired` | Delete licenses that expired more than 30 days ago, with their installs. Asks to confirm. |
+| `regenerate-licenses ...` | Reissue every active license with a new signing key (key rotation). |
+| `sign-keylist` | Sign `keys.json` with `keys/root_private.pem` into `keylist.json`. Add `--revoked k0` to block a kid. |
+
+`--dry-run` shows what would change and changes nothing (revoke, reinstate, purge, regenerate, issue). `--yes` skips the prompt.
+
+```bat
+admin\list-licenses.bat
+admin\issue-license.bat --customer "Example Ltd" --application QuellDAP --client-email contact@example.com ^
+  --plan gated --features tier-2 --expires-days 365
+admin\revoke-license.bat LIC-20261117-ABC123
+```
+
+```bash
+./admin/list-licenses.sh --status active
+./admin/revoke-license.sh LIC-20261117-ABC123 --yes
+```
+
+A tier is a feature: issue with `--plan gated --features tier-2` and gate on `tier-2` in the app.
+
+The scripts call `license_admin.py`, `issue_license.py`, `purge_expired.py`, `regenerate_licenses.py` and `sign_keylist.py`, which you can also run directly. `--firestore-project` or `--json-path` on those overrides `.env`.
 
 ## Issue a license
 
@@ -84,13 +111,17 @@ python issue_license.py --customer "Example Ltd" --application QuellDAP --plan s
 
 Or use a local key file with `--key-file private.pem`. Keep that file out of git.
 
+With neither flag, the key source comes from the environment or `.env`, the same variables the Docker scripts use: `LICENSE_SIGNING_KEY_FILE` (a PEM outside the project), else the secret `LICENSE_SECRET_NAME` (default `license-signing-key`) read with `LICENSE_KEY_SOURCE` (`gcloud` by default, or `aws` or `azure`). The gcloud project is `--project`, else `LICENSE_GCP_PROJECT`, else `LICENSE_FIRESTORE_PROJECT`. `--kid` defaults to `LICENSE_KID`. These hold names and paths, never the key, so they are safe in `.env` (the Docker scripts still read them from the shell only).
+
+A cloud secret is read only when its CLI is installed and signed in (`gcloud auth login`, `aws configure` or `aws sso login`, `az login`). Otherwise the script stops before signing anything and says what to run, or to use `--key-file`. On Windows, `gcloud` is `gcloud.cmd`; the scripts find it on `PATH`.
+
 The output is `licenses/<application>/<license_id>.license.json`. Send that file to the customer. With `--firestore-project`, the license is also registered in the `licenses` collection with `status` set to `active`. The contact email and phone are stored in the license store only.
 
 `--issuer-url` signs the licensing server's URL into the license as `issuer_url`, so the app knows where to send its online check and can't be pointed elsewhere (default: `LICENSE_ISSUER_URL` from the environment or `.env`). Use the same URL as the server's `LICENSE_ISSUER_URL`. It must be `https` (`http` only for `localhost`). Licenses issued without it stay valid and use the app's configured server URL.
 
 `--client-email` is required. `--kid` sets the signing key ID (default `k1`), and `--max-installs` sets the seat limit (default 1). Before writing, the issuer reads `keylist.json` (or `--keylist PATH`) and warns if the kid is missing from it or revoked, so you can upload a new key list first.
 
-Revoke a license by setting its `status` to `revoked` in the Firestore console. The next online check picks it up.
+Revoke a license with `admin/revoke-license` (see [Manage licenses](#manage-licenses)), or set its `status` to `revoked` in the Firestore console. The next online check picks it up.
 
 ## Key rotation (`kid`)
 

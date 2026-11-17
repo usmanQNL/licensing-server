@@ -12,6 +12,7 @@ Examples:
 `revoke` and `reinstate` ask for confirmation unless --yes is given. Add --dry-run to see what would change.
 """
 import argparse
+import json
 import os
 import sys
 
@@ -42,22 +43,33 @@ def main():
     backend.add_argument("--json-path", help="License JSON file (JSON backend, local use).")
     p.add_argument("--dry-run", action="store_true", help="Show what would change, change nothing.")
     p.add_argument("--yes", action="store_true", help="Skip the confirmation prompt.")
+    # The same flags after the command too, so "revoke LIC-... --yes" works as well as "--yes revoke LIC-...".
+    flags = argparse.ArgumentParser(add_help=False)
+    flags.add_argument("--dry-run", action="store_true", default=argparse.SUPPRESS)
+    flags.add_argument("--yes", action="store_true", default=argparse.SUPPRESS)
     sub = p.add_subparsers(dest="command", required=True)
-    sub.add_parser("list", help="List licenses and their status.")
+    ls = sub.add_parser("list", help="List licenses and their status.")
+    ls.add_argument("--status", help="Only this status, e.g. active or revoked.")
+    ls.add_argument("--application", help="Only this application.")
     sub.add_parser("show", help="Show one license.").add_argument("license_id")
-    sub.add_parser("revoke", help="Set status to revoked.").add_argument("license_id")
-    sub.add_parser("reinstate", help="Set status back to active.").add_argument("license_id")
+    sub.add_parser("revoke", help="Set status to revoked.", parents=[flags]).add_argument("license_id")
+    sub.add_parser("reinstate", help="Set status back to active.", parents=[flags]).add_argument("license_id")
     args = p.parse_args()
 
     store = build_admin_storage(args.firestore_project, args.json_path)
     if args.command == "list":
-        for d in store.list_licenses():
-            print(f"{d['license_id']}\t{d.get('status')}\t{d.get('plan')}\t{d.get('application', '')}\t{d.get('customer', '')}")
+        docs = store.list_licenses(status=args.status, application=args.application)
+        if not docs:
+            print("no licenses found")
+            return
+        print("license_id\tstatus\tplan\tapplication\tcustomer\texpires_at")
+        for d in docs:
+            print(f"{d['license_id']}\t{d.get('status')}\t{d.get('plan')}\t{d.get('application', '')}\t{d.get('customer', '')}\t{d.get('expires_at') or 'never'}")
     elif args.command == "show":
         doc = store.get_license(args.license_id)
         if doc is None:
             sys.exit(f"error: no license {args.license_id}")
-        print(doc)
+        print(json.dumps({"license_id": args.license_id, **doc}, indent=2, default=str))
     elif args.command == "revoke":
         set_status(store, args.license_id, "revoked", args)
     elif args.command == "reinstate":

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Issue a signed license file (SPEC.md section 1).
 
-Keep the private key out of git. Use --key-file for a local PEM, or
---key-secret to read it from Google Secret Manager at run time.
+Keep the private key out of git. Use --key-file for a local PEM, or --key-secret to read it
+from your cloud secret store at run time. With neither flag, the key source comes from the
+environment or .env (LICENSE_SIGNING_KEY_FILE, or LICENSE_SECRET_NAME + LICENSE_GCP_PROJECT);
+see app/keysource.py.
 
 Examples:
   python issue_license.py --customer "Example Ltd" --plan subscription --expires-days 365 \
@@ -16,15 +18,15 @@ import json
 import os
 import re
 import secrets
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app  # noqa: E402,F401  (loads the repo's .env, e.g. LICENSE_ISSUER_URL, without overriding real variables)
 from datetime import datetime, timedelta, timezone
 
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from app.keysource import KeySourceError, describe, load_signing_key  # noqa: E402
 
 PLANS = ("opensource", "subscription", "gated", "full")  # "full" is a legacy alias for "subscription"
 
@@ -38,18 +40,10 @@ def b64url(data: bytes) -> str:
 
 
 def load_key(args) -> Ed25519PrivateKey:
-    if args.key_file:
-        with open(args.key_file, "rb") as f:
-            pem = f.read()
-    else:
-        cmd = ["gcloud", "secrets", "versions", "access", "latest", "--secret", args.key_secret]
-        if args.project:
-            cmd += ["--project", args.project]
-        pem = subprocess.run(cmd, check=True, capture_output=True).stdout
-    key = serialization.load_pem_private_key(pem, password=None)
-    if not isinstance(key, Ed25519PrivateKey):
-        sys.exit("error: the signing key must be Ed25519")
-    return key
+    try:
+        return load_signing_key(args.key_file, args.key_secret, args.project)
+    except KeySourceError as e:
+        sys.exit(f"error: {e}")
 
 
 def make_license_id() -> str:
@@ -59,7 +53,8 @@ def make_license_id() -> str:
 def parse_args():
     p = argparse.ArgumentParser(
         description="Issue a signed license file for a customer.",
-        epilog="Exactly one of --key-file or --key-secret is required.",
+        epilog="Key: --key-file or --key-secret. With neither, LICENSE_SIGNING_KEY_FILE or "
+               "LICENSE_SECRET_NAME (default license-signing-key) from the environment or .env is used.",
     )
     p.add_argument("--customer", required=True, help="Customer name, shown in the license.")
     p.add_argument("--application", required=True, help="Application the license is for, e.g. QuellDAP.")
@@ -75,8 +70,9 @@ def parse_args():
     p.add_argument("--features", default="", help="Comma-separated feature names (gated mode).")
     p.add_argument("--license-id", help="Optional ID. Default: LIC-<date>-<random>.")
     p.add_argument("--expires-days", type=int, help="Expire this many days after issue. Omit for perpetual.")
-    p.add_argument("--kid", default="k1",
-                   help="Key ID of the signing key (key rotation). Must match a key the app trusts. Default k1.")
+    p.add_argument("--kid", default=os.environ.get("LICENSE_KID") or "k1",
+                   help="Key ID of the signing key (key rotation). Must match a key the app trusts. "
+                        "Default: $LICENSE_KID, else k1.")
     p.add_argument("--max-installs", type=int, default=1,
                    help="How many installs this license covers (seat limit, enforced by the online check). Default 1.")
     p.add_argument("--expires-on", help="Expiry date, YYYY-MM-DD (UTC). Overrides --expires-days.")
@@ -86,10 +82,12 @@ def parse_args():
                         "Default: $LICENSE_ISSUER_URL. Omit for a license without an online check.")
     p.add_argument("--keylist", default="keylist.json",
                    help="Last signed key list (from sign_keylist.py). Warns if --kid is not in it. Default keylist.json.")
-    key = p.add_mutually_exclusive_group(required=True)
+    key = p.add_mutually_exclusive_group()
     key.add_argument("--key-file", help="Path to the Ed25519 private key PEM. Keep it out of git.")
-    key.add_argument("--key-secret", help="Google Secret Manager secret name holding the PEM.")
-    p.add_argument("--project", help="Google Cloud project, used with --key-secret.")
+    key.add_argument("--key-secret", help="Secret name holding the PEM (Google Secret Manager by default; "
+                     "LICENSE_KEY_SOURCE=aws or azure for the others).")
+    p.add_argument("--project", help="Google Cloud project for the secret. Default: $LICENSE_GCP_PROJECT, "
+                   "else $LICENSE_FIRESTORE_PROJECT.")
     p.add_argument("--out", help="Output path. Default: licenses/<application>/<license_id>.license.json")
     p.add_argument("--dry-run", action="store_true",
                    help="Print the payload and the output path, and write nothing (no file, no store).")
@@ -134,8 +132,7 @@ def check_keylist(args) -> None:
 def main():
     args = parse_args()
     check_keylist(args)
-    if args.key_secret and not args.project:
-        print("note: --project not set, gcloud default project will be used", file=sys.stderr)
+    print(f"signing key: {describe(args.key_file, args.key_secret, args.project)}, kid {args.kid}", file=sys.stderr)
 
     now = datetime.now(timezone.utc).replace(microsecond=0)
     payload = {
