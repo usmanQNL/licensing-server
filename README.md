@@ -47,7 +47,16 @@ Add `SKILL.md` to your Claude skills (claude.ai: Capabilities, then Skills). In 
 
 ## Manage licenses
 
-The `admin/` folder has one script per task, as a `.bat` for Windows and a `.sh` for Linux and Mac. They read `.env` in the repo root (copy `.env.example`), so the storage backend and Firestore project come from `LICENSE_STORAGE` and `LICENSE_FIRESTORE_PROJECT`, not from flags. They run from the repo root and use `.venv` if it exists (or `PYTHON` if set).
+The `admin/` folder has one script per task, as a `.bat` for Windows and a `.sh` for Linux and Mac. They read `.env` in the repo root (copy `.env.example`), so the storage backend and Firestore project come from `LICENSE_STORAGE` and `LICENSE_FIRESTORE_PROJECT`, not from flags. They run from the repo root.
+
+They run only inside a Python virtual environment: the active one, else `.venv` or `venv` in the repo root. Without one, or if it lacks the dependencies, they stop and run nothing. Create it once:
+
+```bat
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+On Linux and Mac: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 
 | Script | What it does |
 |---|---|
