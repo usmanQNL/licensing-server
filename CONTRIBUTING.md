@@ -40,6 +40,8 @@ By contributing, you agree that your contribution is licensed under the Apache L
 
 ## Before you open a pull request
 
-- Run the tests (see the Test section of the README): `pytest -q`, plus the Node and Rust tests if you touched those verifiers.
+- Run the tests (see the Test section of the README) inside a virtual environment with `requirements.txt` installed: `pytest -q`, plus `node --test tests/node/test.js` and `cargo test` in `verifiers/rust/` if you touched those verifiers. CI runs the Python and Node tests.
+- If you change a format or a verifier rule, change all verifiers, `SPEC.md` and `verifiers/cases.json` (regenerate it with `tests/make_cases.py`) together.
+- Update the docs in the same pull request: `README.md`, `SKILL.md` (and its `licensing/licensing.md` template), `SPEC.md`, `samples/README.md` and `docs/licensing-skill-flow.html`, wherever the change shows.
 - Never commit private keys, `.env` files, or deployment-specific files such as `keys.json`, `keylist.json` or `root-public.pem`. They are gitignored on purpose.
 - Keep each pull request focused on one change and explain why it is needed.
