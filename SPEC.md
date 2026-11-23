@@ -54,6 +54,7 @@ A JSON object with `kid`, `payload`, and `signature`.
 - The public key ships inside the app (`license-public.pem` or a language constant). Never a secret.
 - Apps may trust several keys at once as `{kid: PEM}`. This allows rotation without breaking installed apps. Rotation steps: README, "Key rotation".
 - The private key stays out of git (gitignored). It lives on the issuer's machine or in a secret manager. The server reads it from the secret manager, never from the repo.
+- The issuer scripts (`issue_license.py`, `regenerate_licenses.py`, and the `admin/` wrappers) read the signing key, in this order: `--key-file PATH` or `LICENSE_SIGNING_KEY_FILE` (a PEM outside the project), then `--key-secret NAME` or `LICENSE_SECRET_NAME` (default `license-signing-key`) from the cloud secret store named by `LICENSE_KEY_SOURCE` (`gcloud` by default, `aws` or `azure`). A cloud secret is read only when that CLI is installed and signed in; otherwise the script stops before signing anything. These settings hold names and paths, never the key.
 
 ### 2a. Signed key list (v1)
 
@@ -159,7 +160,7 @@ Everything the app fetches lives in one JSON file per install:
   - HTTP 429: more than 60 checks a minute from one client (configurable).
 - `GET /v1/health`: returns `{"ok": true}`, no auth.
 - `GET /v1/keys`: returns the signed key list (section 2a), no auth. HTTP 503 if the server has no key list configured.
-- No endpoint lists or edits licenses. Management happens in the storage console or through the storage adapter.
+- No endpoint lists or edits licenses. Management happens through the storage adapter (`license_admin.py`, `purge_expired.py`, `regenerate_licenses.py` and the `admin/` scripts) or in the storage console.
 
 Storage (vendor-neutral):
 - `licenses` collection: `license_id`, `status` (`active`, `revoked`), `plan`, `customer`, `application`, `features`, `max_installs`, `issued_at`, `expires_at`, `issuer_url`, `client_email`, `client_phone`. The contact fields are never written to license files or replies.

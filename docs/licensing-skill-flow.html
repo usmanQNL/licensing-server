@@ -69,13 +69,23 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <text x="450.0" y="133.0" text-anchor="middle" class="lbl">OpenSource</text>
 <rect x="530" y="128.0" width="450" height="24" rx="5" class="chip repo"/>
 <rect x="530" y="128.0" width="5" height="24" rx="2" class="bar repo"/>
-<text x="544" y="144.0" text-anchor="start" class="ct">LICENSE (MIT, Apache, BSD), then stop</text>
+<text x="544" y="144.0" text-anchor="start" class="ct">LICENSE (MIT/Apache/BSD) + licensing.md, then stop</text>
 <rect x="100.0" y="228.0" width="300" height="58" rx="8" class="node"/>
-<text x="250" y="253.0" text-anchor="middle" class="t1">Q2, Q3, Q6 · App name, language,</text>
-<text x="250" y="271.0" text-anchor="middle" class="t2">paid features (Gated only)</text>
+<text x="250" y="253.0" text-anchor="middle" class="t1">Q2–Q4, Q7 · License, app name,</text>
+<text x="250" y="271.0" text-anchor="middle" class="t2">language, paid features (Gated only)</text>
+<line x1="400.0" y1="257.0" x2="514" y2="257.0" class="link"/>
+<line x1="514" y1="242.0" x2="514" y2="272.0" class="link"/>
+<line x1="514" y1="242.0" x2="530" y2="242.0" class="link"/>
+<line x1="514" y1="272.0" x2="530" y2="272.0" class="link"/>
+<rect x="530" y="230.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="230.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="246.0" text-anchor="start" class="ct">LICENSE + EULA.md, or BUSL / Elastic / PolyForm</text>
+<rect x="530" y="260.0" width="450" height="24" rx="5" class="chip repo"/>
+<rect x="530" y="260.0" width="5" height="24" rx="2" class="bar repo"/>
+<text x="544" y="276.0" text-anchor="start" class="ct">licensing/licensing.md + pointer in AGENTS.md</text>
 <line x1="250" y1="286.0" x2="250" y2="330.0" class="edge" marker-end="url(#ah)"/>
 <polygon points="250,332.0 370.0,374.0 250,416.0 130.0,374.0" class="node dia"/>
-<text x="250" y="371.0" text-anchor="middle" class="t1">Q4 · Already run a</text>
+<text x="250" y="371.0" text-anchor="middle" class="t1">Q5 · Already run a</text>
 <text x="250" y="387.0" text-anchor="middle" class="t2">licensing server?</text>
 <line x1="250" y1="416.0" x2="250" y2="518.0" class="edge" marker-end="url(#ah)"/>
 <rect x="100.0" y="520.0" width="300" height="58" rx="8" class="node"/>
@@ -137,7 +147,7 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <text x="544" y="845.0" text-anchor="start" class="ct">Endpoint URL in app settings (not hard-coded)</text>
 <rect x="100.0" y="916.0" width="300" height="58" rx="8" class="node"/>
 <text x="250" y="941.0" text-anchor="middle" class="t1">Step 5 · Issue license files</text>
-<text x="250" y="959.0" text-anchor="middle" class="t2">issue_license.py, plan = subscription | gated</text>
+<text x="250" y="959.0" text-anchor="middle" class="t2">admin/issue-license, plan = subscription | gated</text>
 <line x1="250" y1="974.0" x2="250" y2="1031.0" class="edge" marker-end="url(#ah)"/>
 <line x1="400.0" y1="945.0" x2="514" y2="945.0" class="link"/>
 <line x1="514" y1="930.0" x2="514" y2="960.0" class="link"/>
@@ -170,7 +180,7 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <line x1="514" y1="1122.0" x2="530" y2="1122.0" class="link"/>
 <rect x="530" y="1110.0" width="450" height="24" rx="5" class="chip repo"/>
 <rect x="530" y="1110.0" width="5" height="24" rx="2" class="bar repo"/>
-<text x="544" y="1126.0" text-anchor="start" class="ct">.env: &lt;APP&gt;_LICENSE_FILE=full path (else ./license.json)</text>
+<text x="544" y="1126.0" text-anchor="start" class="ct">.env, .env.example: .env + .env.example: &lt;APP&gt;_LICENSE_FILE (else ./license.json)lt;APP.env + .env.example: &lt;APP&gt;_LICENSE_FILE (else ./license.json)gt;_LICENSE_FILE path</text>
 <polygon points="250,1150.0 370.0,1192.0 250,1234.0 130.0,1192.0" class="node dia"/>
 <text x="250" y="1196.5" text-anchor="middle" class="t1">Mode is Gated?</text>
 <line x1="250" y1="1234.0" x2="250" y2="1291.0" class="edge" marker-end="url(#ah)"/>
@@ -185,15 +195,15 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <line x1="514" y1="1352.0" x2="530" y2="1352.0" class="link"/>
 <rect x="530" y="1280.0" width="450" height="24" rx="5" class="chip repo"/>
 <rect x="530" y="1280.0" width="5" height="24" rx="2" class="bar repo"/>
-<text x="544" y="1296.0" text-anchor="start" class="ct">licensing/licensing.md (feature IDs + full setup)</text>
+<text x="544" y="1296.0" text-anchor="start" class="ct">licensing.md: Gated features table (feature IDs)</text>
 <rect x="530" y="1310.0" width="450" height="24" rx="5" class="chip repo"/>
 <rect x="530" y="1310.0" width="5" height="24" rx="2" class="bar repo"/>
-<text x="544" y="1326.0" text-anchor="start" class="ct">Pointer in AGENTS.md and other agent files</text>
+<text x="544" y="1326.0" text-anchor="start" class="ct">Gated-feature pointer in AGENTS.md and other agent files</text>
 <rect x="530" y="1340.0" width="450" height="24" rx="5" class="chip repo"/>
 <rect x="530" y="1340.0" width="5" height="24" rx="2" class="bar repo"/>
 <text x="544" y="1356.0" text-anchor="start" class="ct">evaluate(..., features_needed=[...]) around each</text>
 <polygon points="250,1410.0 370.0,1452.0 250,1494.0 130.0,1452.0" class="node dia"/>
-<text x="250" y="1449.0" text-anchor="middle" class="t1">Q5 · Online check on?</text>
+<text x="250" y="1449.0" text-anchor="middle" class="t1">Q6 · Online check on?</text>
 <text x="250" y="1465.0" text-anchor="middle" class="t2">(default yes)</text>
 <line x1="250" y1="1494.0" x2="250" y2="1551.0" class="edge" marker-end="url(#ah)"/>
 <rect x="100.0" y="1553.0" width="300" height="58" rx="8" class="node"/>
@@ -234,12 +244,13 @@ ul.notes{color:var(--muted);font-size:14px;padding-left:20px;max-width:75ch}
 <text x="70.0" y="845.0" text-anchor="end" class="lbl warnt">retry</text>
 </svg>
 </div>
-<figcaption>OpenSource leaves after the license question with only a free license (MIT, Apache-2.0 or BSD, plus optional DCO and docs license). Paid modes get a proprietary EULA or a source-available license. An existing server skips key making and deployment, so the only key the project holds is the root public key it was given. Gated adds the features file and agent pointers; turning the online check off removes everything Step 7 creates.</figcaption>
+<figcaption>OpenSource leaves after the license question with only a free license (MIT, Apache-2.0 or BSD, plus optional DCO and docs license). Paid modes get a proprietary EULA or a source-available license. An existing server skips key making and deployment, so the only key the project holds is the root public key it was given. Every mode keeps its answers in <code>licensing/licensing.md</code>, with a pointer from the project's agent files. Gated adds the feature table and a longer pointer; turning the online check off removes everything Step 7 creates.</figcaption>
 </figure>
 <ul class="notes">
 <li>Keys are made before the deploy (Step 4 before Step 2) because the server needs the signing key and the key list.</li>
 <li>Old licenses issued with plan <code>full</code> still verify as Subscription; the skill no longer offers Full as a choice.</li>
-<li>Built from SKILL.md as revised on 11 Nov 2026.</li>
+<li>Licenses are issued and managed with the <code>admin/</code> scripts (<code>.bat</code> or <code>.sh</code>). A cloud signing secret is read only when its CLI (<code>gcloud</code>, <code>aws</code> or <code>az</code>) is installed and signed in; otherwise use a key file.</li>
+<li>Built from SKILL.md as revised on 23 Nov 2026.</li>
 </ul>
 </main>
 </body>

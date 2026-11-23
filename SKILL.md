@@ -17,6 +17,10 @@ Every project this skill touches gets one file, `licensing/licensing.md`, that h
 
 **Keep it current.** Update it at the end of every step, not only at the end. Each step below says what to add. Record what was actually done (the real names, paths and commands that ran), not what the template suggests. When something changes later (a new feature, a key rotation, a new server URL), update the record in the same change.
 
+**Point agents at it.** As soon as the record exists, add a short pointer to it in every agent instruction file the target project has (for example `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursorrules`). If it has none, create `AGENTS.md`. Gated projects get the longer pointer in Step 6. For other modes, one line is enough:
+
+> Licensing for this project is recorded in `licensing/licensing.md`. Read it before changing licensing code, license files or the project license, and keep it current.
+
 **What it must never hold:** private keys, secret values, tokens, passwords or customer contact details (email, phone). For a private key, record only where it lives: the secret name and cloud project, or the file path outside the repo. For issued licenses, record only the license ID, plan, features and expiry.
 
 **Older projects:** if the project has `licensing/features.md` from an earlier version of this skill, move its entries into the "Gated features" table of `licensing/licensing.md`, replace the old file's contents with a one-line pointer to `licensing/licensing.md`, and update the agent instruction files (Step 6) to point at `licensing/licensing.md`.
@@ -36,7 +40,7 @@ Ask only what the chosen mode needs.
 
 1. **Mode.** Pick one:
    - **OpenSource:** adds a free license file (question 2). No keys, no checks. Record the mode, the app name, the license and its files in `licensing/licensing.md`, then stop.
-   - **Subscription:** a signed license with an expiry date, checked at launch, with a 14-day grace period. Its license must carry the `subscription` plan.
+   - **Subscription:** a signed license with an expiry date, checked at launch, with a 14-day grace period. Its license must carry the `subscription` plan, and every paid feature is on. The old `full` plan was merged into Subscription: never issue it, but licenses issued with it still verify as Subscription.
    - **Gated:** a signed license listing features. Each paid feature checks its flag before it runs. Its license must carry the `gated` plan. It can have an end date (`--expires-days` or `--expires-on`), with the same 14-day grace period; leave it out for a perpetual license.
 2. **License.** Which license the project is published under. Every mode gets one, and the templates are in `templates/licenses/` (its `README.md` says where each file goes). If that folder is not next to this skill, use the copy at https://github.com/usmanQNL/licensing-server/tree/master/templates/licenses. Show the user the options for their mode with a one-line description each, and recommend the default.
    - **OpenSource** (pick one): **MIT** (default, the shortest and most used), **Apache-2.0** (adds a patent grant and a `NOTICE` file), **BSD-2-Clause**, or **BSD-3-Clause** (also bars using the owner's name to promote derived products). Then offer two optional add-ons:
@@ -127,7 +131,7 @@ Put only `root-public.pem` in the app. Never the root private key, and never the
 
 ## Step 5: issue license files
 
-Use `issue_license.py` (in this repo). Run `python issue_license.py --help` for all options.
+Use `issue_license.py` (in this repo), or its wrapper `admin/issue-license.bat` (Windows) or `admin/issue-license.sh` (Linux, Mac), which reads `.env` in the repo root. Run `python issue_license.py --help` for all options. The `admin/` scripts run only inside a Python virtual environment with `requirements.txt` installed (`.venv` or `venv` in the repo root, or the active one); without it they stop and say how to create it.
 
 Each issue needs one key source: `--key-secret NAME --project PROJECT` (reads the cloud secret store at run time; allowed only when `gcloud`, the AWS CLI or the Azure CLI is installed and signed in), or `--key-file PATH` for a local PEM. With neither flag, `LICENSE_SIGNING_KEY_FILE` or `LICENSE_SECRET_NAME` from the environment or `.env` is used. It also needs `--customer`, `--application`, `--plan`, and `--client-email`. `--client-phone` is optional. Contact details are stored in the license store only, never in the file.
 
@@ -375,8 +379,10 @@ curl -sS -X POST <SERVER>/v1/check -H "Content-Type: application/json" -d '{"lic
 # Step 5: issue a license (template)
 python issue_license.py <key source> --customer "<CUSTOMER>" --application <app> --plan <plan> --client-email "<EMAIL>" --issuer-url <SERVER> <other options as used>
 
-# Manage licenses
-python license_admin.py <list / show / revoke / reinstate> <...>
+# Manage licenses (from the licensing server repo, inside its .venv)
+admin/list-licenses.sh            # or admin\list-licenses.bat on Windows
+admin/revoke-license.sh <LICENSE_ID>
+# or: python license_admin.py <list / show / revoke / reinstate> <...>
 ```
 
 ## Verifier and app wiring

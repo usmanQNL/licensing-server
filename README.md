@@ -2,11 +2,15 @@
 
 Reusable licensing for your projects: signed Ed25519 license files, a daily online check, and a grace period. It includes:
 
-- `SKILL.md`: a Claude skill that walks through adding licensing to a project.
+- `SKILL.md`: the add-licensing skill, which walks an agent (Claude, or any agent that reads skill files) through adding licensing to a project. [`docs/licensing-skill-flow.html`](docs/licensing-skill-flow.html) shows its steps and the files each one creates.
+- `SPEC.md`: the license file, key list, online check and cache formats that every part follows.
 - `issue_license.py`: signs license files and registers them in the storage backend (Firestore or a JSON file).
+- `admin/`: one `.bat` and `.sh` script per license task (list, show, issue, revoke, reinstate, purge, regenerate, sign key list). See [Manage licenses](#manage-licenses).
 - `app/`: an online check server (FastAPI), with storage behind an interface. Firestore is the first adapter.
 - `verifiers/`: license checks for Python, Node.js, and Rust, with examples. A Dart verifier is included but untested (see below).
 - `verifiers/cases.json`: shared test cases that every verifier must pass.
+- `samples/`: ready-made plan and gate checks in six languages, plus server-side gates. See [Plan and gate samples](#plan-and-gate-samples).
+- `templates/licenses/`: open-source and paid license texts that the skill copies into a project. See [Choose a license](#choose-a-license).
 
 Licensing is a deterrent, not DRM. A check on the user's machine can always be bypassed. Use the online check and revocation to limit the damage.
 
@@ -15,7 +19,7 @@ Licensing is a deterrent, not DRM. A check on the user's machine can always be b
 | Mode | What it does |
 |---|---|
 | OpenSource | Adds a free license (MIT by default). No keys, no checks. |
-| Subscription | Signed license with an expiry date, checked at launch, with a 14-day grace period. |
+| Subscription | Signed license with an expiry date, checked at launch, with a 14-day grace period. All paid features are on. Licenses issued with the old `full` plan count as Subscription. |
 | Gated | Signed license listing features. Each paid feature checks its flag. Optional end date, with the same 14-day grace period. |
 
 Every mode also gets a license file for the project. See "Choose a license" below.
@@ -44,6 +48,10 @@ This is not legal advice. The standard licenses are safe to use as they are; hav
 ## Use the skill
 
 Add `SKILL.md` to your Claude skills (claude.ai: Capabilities, then Skills). In a new project, ask Claude to add licensing. It asks for the mode, the project's license, application name, languages, whether to enable the online check, and feature names. It then walks you through the keys, verifier, feature gating, and tests.
+
+Other agents can use it too: point them at `SKILL.md` (for example from the project's `AGENTS.md`), since it is plain Markdown with every command written out.
+
+The skill keeps one record in each project it touches, `licensing/licensing.md`: every answer, the license and its files, where each key lives (never the key itself), the commands that ran, the verifier wiring, the paid features and their feature IDs, and a progress table. Any agent or person can pick the work up from that file. The skill also adds a pointer to it in the project's agent instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and the like), and creates `AGENTS.md` if there is none. Projects that still have the older `licensing/features.md` get it moved into the record.
 
 ## Manage licenses
 
@@ -89,12 +97,14 @@ The scripts call `license_admin.py`, `issue_license.py`, `purge_expired.py`, `re
 
 ## Issue a license
 
-Install the issuer dependencies once:
+Install the dependencies once, in the same virtual environment the `admin/` scripts use:
 
 ```bash
-pip install google-cloud-firestore cryptography
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # Windows: .venv\Scripts\pip
 gcloud auth application-default login   # only if registering in Firestore
 ```
+
+The commands below call `issue_license.py` directly. `admin/issue-license` runs the same script with your `.env` settings.
 
 Issue a license. This reads the private key from Secret Manager, so it never sits on disk:
 
@@ -409,7 +419,7 @@ class PostgresStorage(Storage):
             "SELECT license_id, status, plan, customer, max_installs FROM licenses WHERE license_id = %s",
             (license_id,)).fetchone()
         return dict(zip(["license_id", "status", "plan", "customer", "max_installs"], row)) if row else None
-    # ...implement the other four methods the same way
+    # ...implement the other seven methods the same way
 ```
 
 Works with any SQL database. For DynamoDB, Cosmos DB, or MongoDB, use the same eight methods with that database's client.
@@ -430,7 +440,7 @@ The `cosmos`, `dynamodb` and `postgres` adapters are stubs. Selecting one fails 
 The server is a standard FastAPI app in a Docker image, so it runs anywhere that runs containers.
 
 - **Any container host** (Fly.io, Render, a VPS, Kubernetes): build the `Dockerfile` and run it. Set the same environment variables as in the table above.
-- **AWS Lambda:** wrap the app with [Mangum](https://github.com/jordaniza/Mangum). Add this to a new `lambda_handler.py`:
+- **AWS Lambda:** wrap the app with [Mangum](https://github.com/Kludex/mangum). Add this to a new `lambda_handler.py`:
 
   ```python
   from mangum import Mangum
@@ -603,11 +613,13 @@ Run the tests from the repo root:
 
 The shared cases in `verifiers/cases.json` must pass in every verifier. The online replies in `verifiers/online-replies.json` (checked with `verifiers/online-public.pem`) cover the reply check. Python, Node, and Rust pass them. Dart is untested.
 
-The repo includes a GitHub Actions workflow (`.github/workflows/tests.yml`) that runs the Python tests on every push and pull request.
+The repo includes two GitHub Actions workflows: `.github/workflows/tests.yml` runs the Python and Node tests on every push and pull request, and `.github/workflows/dco.yml` fails a pull request that has a commit without a `Signed-off-by` line.
 
 ## Contributing
 
 Contributions are welcome. Every commit must be signed off under the [Developer Certificate of Origin](DCO), which `git commit -s` does for you. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+Agents working on this repo read `AGENTS.md` (copied as `CLAUDE.md` and `GEMINI.md`). It lists the standing rules and which docs to update with each change.
 
 ## License
 
