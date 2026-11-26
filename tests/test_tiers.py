@@ -36,3 +36,18 @@ def test_issue_license_tier_features():
     names = issue_license.tier_features("basic", "sso")
     assert "sso" in names and "advanced-sync" in names
     assert names == sorted(set(names))
+
+
+def test_tiers_are_cumulative_and_cover_catalog():
+    data = tiers.load()
+    assert set(data["tiers"]["ultra"]) == set(data["catalog"])
+    assert set(data["tiers"]["full"]) < set(data["tiers"]["ultra"])
+
+
+def test_non_cumulative_tier_refused(tmp_path):
+    data = tiers.load()
+    data["tiers"]["full"] = [f for f in data["tiers"]["full"] if f != "alerts"]
+    path = tmp_path / "t.json"
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError):
+        tiers.load(str(path))

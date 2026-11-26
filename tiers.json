@@ -14,13 +14,54 @@
     "client-certs": "Per-app mutual TLS",
     "encrypted-passwords": "JWE-encrypted passwords to the validate endpoint",
     "source-settings": "Per-source settings and reset",
-    "import-to-local": "Move AD users into local accounts with stored passwords"
+    "import-to-local": "Move AD users into local accounts with stored passwords",
+    "client-apps": "Client apps (applications that sign users in through QuellDAP)",
+    "custom-attributes": "Custom attribute definitions and values on users, groups and apps",
+    "custom-login-form-and-navbar": "Custom and embedded login forms, and the my-apps and navbar endpoints"
   },
   "tiers": {
-    "free": [],
-    "basic": ["advanced-sync", "scheduled-sync", "admin-roles", "ldap-listener", "database-backends", "alerts", "ad-password-verifier"],
-    "full": ["advanced-sync", "scheduled-sync", "admin-roles", "ldap-listener", "database-backends", "alerts", "ad-password-verifier", "multi-source", "sso", "client-certs", "encrypted-passwords", "source-settings", "import-to-local"],
-    "ultra": ["advanced-sync", "scheduled-sync", "admin-roles", "ldap-listener", "database-backends", "alerts", "ad-password-verifier", "multi-source", "sso", "client-certs", "encrypted-passwords", "source-settings", "import-to-local"]
+    "free": [
+      "ldap-listener",
+      "client-apps"
+    ],
+    "basic": [
+      "ldap-listener",
+      "client-apps",
+      "scheduled-sync",
+      "alerts"
+    ],
+    "full": [
+      "ldap-listener",
+      "client-apps",
+      "scheduled-sync",
+      "alerts",
+      "advanced-sync",
+      "admin-roles",
+      "ad-password-verifier",
+      "sso",
+      "client-certs",
+      "encrypted-passwords",
+      "import-to-local",
+      "custom-attributes"
+    ],
+    "ultra": [
+      "ldap-listener",
+      "client-apps",
+      "scheduled-sync",
+      "alerts",
+      "advanced-sync",
+      "admin-roles",
+      "ad-password-verifier",
+      "sso",
+      "client-certs",
+      "encrypted-passwords",
+      "import-to-local",
+      "custom-attributes",
+      "database-backends",
+      "multi-source",
+      "source-settings",
+      "custom-login-form-and-navbar"
+    ]
   },
   "legacy": {
     "tier-1": "basic",

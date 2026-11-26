@@ -28,6 +28,11 @@ def validate(data: dict) -> None:
             raise ValueError(f"tier {name} has features not in the catalog: {sorted(unknown)}")
         if len(set(features)) != len(features):
             raise ValueError(f"tier {name} lists a feature twice")
+    # Each tier includes the one below it.
+    for lower, higher in zip(TIER_ORDER, TIER_ORDER[1:]):
+        missing = set(tiers[lower]) - set(tiers[higher])
+        if missing:
+            raise ValueError(f"tier {higher} must include every feature of {lower}; missing {sorted(missing)}")
     for old, new in data.get("legacy", {}).items():
         if new not in tiers:
             raise ValueError(f"legacy token {old} maps to unknown tier {new}")
