@@ -8,7 +8,7 @@ import tiers
 def test_shipped_tiers_are_valid():
     data = tiers.load()
     assert set(data["tiers"]) == {"free", "basic", "full", "ultra"}
-    assert data["tiers"]["free"] == []
+    assert set(data["tiers"]["free"]) == {"ldap-listener", "client-apps"}
 
 
 def test_legacy_tier_2_is_full():
@@ -33,8 +33,8 @@ def test_feature_outside_catalog_refused(tmp_path):
 def test_issue_license_tier_features():
     import issue_license
 
-    names = issue_license.tier_features("basic", "sso")
-    assert "sso" in names and "advanced-sync" in names
+    names = issue_license.tier_features("full", "")
+    assert "sso" in names and "advanced-sync" in names and "client-apps" in names
     assert names == sorted(set(names))
 
 
