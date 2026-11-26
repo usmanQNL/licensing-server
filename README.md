@@ -91,7 +91,7 @@ admin\revoke-license.bat LIC-20261117-ABC123
 ./admin/revoke-license.sh LIC-20261117-ABC123 --yes
 ```
 
-A tier is a feature: issue with `--plan gated --features tier-2` and gate on `tier-2` in the app.
+Tiers are named feature sets in `tiers.json` (Free, Basic, Full, Ultra for QuellDAP). Edit them in `admin/tier-editor.html`: drag each feature into a tier column, then download `tiers.json` into this folder. Issue with `--plan gated --tier full`; the feature names are written into the license, so later edits never change issued licenses. `tier-2` and `tier-1` still work and mean Full and Basic.
 
 The scripts call `license_admin.py`, `issue_license.py`, `purge_expired.py`, `regenerate_licenses.py` and `sign_keylist.py`, which you can also run directly. `--firestore-project` or `--json-path` on those overrides `.env`.
 

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tier editor</title>
+<style>
+  :root { --bg:#fafafa; --fg:#18181b; --muted:#71717a; --card:#fff; --line:#e4e4e7; --accent:#2563eb; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#18181b; --fg:#fafafa; --muted:#a1a1aa; --card:#27272a; --line:#3f3f46; --accent:#60a5fa; } }
+  :root[data-theme="dark"] { --bg:#18181b; --fg:#fafafa; --muted:#a1a1aa; --card:#27272a; --line:#3f3f46; --accent:#60a5fa; }
+  body { margin:0; padding:16px; font:14px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+  header { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  h1 { font-size:18px; margin:0; }
+  button, input[type=file] { font:inherit; padding:6px 12px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #status { color:var(--muted); min-height:1.4em; }
+  .board { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; }
+  .col { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px; min-height:200px; }
+  .col.over { outline:2px dashed var(--accent); }
+  .col h2 { font-size:15px; margin:0 0 2px; }
+  .col .count { color:var(--muted); font-size:12px; margin-bottom:8px; }
+  .card { border:1px solid var(--line); border-radius:6px; padding:8px; margin-bottom:8px; background:var(--bg); cursor:grab; }
+  .card:focus-visible { outline:2px solid var(--accent); }
+  .card.dragging { opacity:.5; }
+  .card code { font-size:12px; word-break:break-all; }
+  .card p { margin:4px 0; color:var(--muted); font-size:12px; }
+  .card select { font:inherit; font-size:12px; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  .note { color:var(--muted); font-size:12px; margin-top:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>QuellDAP tiers</h1>
+  <div>
+    <label>Open tiers.json <input type="file" id="open" accept="application/json,.json"></label>
+    <button id="save" class="primary" type="button">Download tiers.json</button>
+  </div>
+</header>
+<div id="status">Open tiers.json to start, or it loads the file in this folder.</div>
+<div class="board" id="board"></div>
+<p class="note">Drag a feature into a tier column, or use its menu. Save, then put the file next to issue_license.py. Licenses issued afterwards get the features you chose; licenses already issued keep theirs. Free holds no paid features.</p>
+<script>
+const TIERS = ["unassigned", "free", "basic", "full", "ultra"];
+const LABEL = { unassigned: "Not in a tier", free: "Free", basic: "Basic", full: "Full", ultra: "Ultra" };
+let data = null;      // loaded tiers.json
+let place = {};       // feature -> tier name (or "unassigned")
+const $ = (id) => document.getElementById(id);
+const setStatus = (text) => { $("status").textContent = text; };
+
+function load(obj) {
+  // Structure check mirrors tiers.py validate().
+  if (!obj || typeof obj.catalog !== "object" || typeof obj.tiers !== "object") throw new Error("Not a tiers.json file.");
+  for (const t of ["free", "basic", "full", "ultra"]) if (!Array.isArray(obj.tiers[t])) throw new Error(`Missing tier ${t}.`);
+  data = obj;
+  place = {};
+  for (const f of Object.keys(obj.catalog)) place[f] = "unassigned";
+  for (const t of ["free", "basic", "full", "ultra"]) for (const f of obj.tiers[t]) if (f in place) place[f] = t;
+  render();
+  setStatus(`Loaded ${Object.keys(obj.catalog).length} features.`);
+}
+
+function move(feature, tier) {
+  place[feature] = tier;
+  render();
+}
+
+function render() {
+  const board = $("board");
+  board.innerHTML = "";
+  for (const tier of TIERS) {
+    const col = document.createElement("div");
+    col.className = "col";
+    col.dataset.tier = tier;
+    const features = Object.keys(place).filter((f) => place[f] === tier);
+    col.innerHTML = `<h2>${LABEL[tier]}</h2><div class="count">${features.length} feature${features.length === 1 ? "" : "s"}</div>`;
+    col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("over"); });
+    col.addEventListener("dragleave", () => col.classList.remove("over"));
+    col.addEventListener("drop", (e) => {
+      e.preventDefault();
+      col.classList.remove("over");
+      const f = e.dataTransfer.getData("text/plain");
+      if (f in place) move(f, tier);
+    });
+    for (const f of features) col.appendChild(card(f));
+    board.appendChild(col);
+  }
+}
+
+function card(feature) {
+  const el = document.createElement("div");
+  el.className = "card";
+  el.draggable = true;
+  el.tabIndex = 0;
+  el.dataset.feature = feature;
+  el.innerHTML = `<code></code><p></p><label><span class="sr">Tier</span><select aria-label="Tier for ${feature}"></select></label>`;
+  el.querySelector("code").textContent = feature;
+  el.querySelector("p").textContent = data.catalog[feature] || "";
+  const sel = el.querySelector("select");
+  for (const t of TIERS) {
+    const o = document.createElement("option");
+    o.value = t;
+    o.textContent = LABEL[t];
+    if (t === place[feature]) o.selected = true;
+    sel.appendChild(o);
+  }
+  sel.addEventListener("change", () => move(feature, sel.value));
+  el.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", feature); el.classList.add("dragging"); });
+  el.addEventListener("dragend", () => el.classList.remove("dragging"));
+  return el;
+}
+
+function build() {
+  const out = { v: 1, product: data.product, catalog: data.catalog, tiers: {}, legacy: data.legacy || {} };
+  for (const t of ["free", "basic", "full", "ultra"]) out.tiers[t] = Object.keys(place).filter((f) => place[f] === t);
+  return out;
+}
+
+$("open").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try { load(JSON.parse(await file.text())); } catch (err) { setStatus("Could not open: " + err.message); }
+});
+
+$("save").addEventListener("click", () => {
+  if (!data) { setStatus("Open a tiers.json first."); return; }
+  const unassigned = Object.keys(place).filter((f) => place[f] === "unassigned");
+  if (unassigned.length) { setStatus(`Put these in a tier first: ${unassigned.join(", ")}`); return; }
+  const blob = new Blob([JSON.stringify(build(), null, 2) + "\n"], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tiers.json";
+  a.click();
+  setStatus("Downloaded tiers.json.");
+});
+
+// Opened from the repo folder via a local server, load the file beside this page.
+fetch("../tiers.json").then((r) => (r.ok ? r.json() : null)).then((j) => j && load(j)).catch(() => {});
+</script>
+</body>
+</html>

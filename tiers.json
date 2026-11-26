@@ -1,0 +1,29 @@
+{
+  "v": 1,
+  "product": "QuellDAP",
+  "catalog": {
+    "advanced-sync": "Hourly incremental sync for one source",
+    "scheduled-sync": "Nightly full sync",
+    "admin-roles": "Several named admins with roles",
+    "ldap-listener": "Read-only LDAP listener for Jira, GitLab, Grafana, Outlook",
+    "database-backends": "PostgreSQL, MySQL, MariaDB, failover and replica URLs",
+    "alerts": "Email and webhook alerts",
+    "ad-password-verifier": "Stored AD password verifier",
+    "multi-source": "More than one directory source",
+    "sso": "SAML and OIDC sign-in, hosted login form",
+    "client-certs": "Per-app mutual TLS",
+    "encrypted-passwords": "JWE-encrypted passwords to the validate endpoint",
+    "source-settings": "Per-source settings and reset",
+    "import-to-local": "Move AD users into local accounts with stored passwords"
+  },
+  "tiers": {
+    "free": [],
+    "basic": ["advanced-sync", "scheduled-sync", "admin-roles", "ldap-listener", "database-backends", "alerts", "ad-password-verifier"],
+    "full": ["advanced-sync", "scheduled-sync", "admin-roles", "ldap-listener", "database-backends", "alerts", "ad-password-verifier", "multi-source", "sso", "client-certs", "encrypted-passwords", "source-settings", "import-to-local"],
+    "ultra": ["advanced-sync", "scheduled-sync", "admin-roles", "ldap-listener", "database-backends", "alerts", "ad-password-verifier", "multi-source", "sso", "client-certs", "encrypted-passwords", "source-settings", "import-to-local"]
+  },
+  "legacy": {
+    "tier-1": "basic",
+    "tier-2": "full"
+  }
+}
