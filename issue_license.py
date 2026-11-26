@@ -68,6 +68,7 @@ def parse_args():
                    help="Also register the license in this JSON file (local use). Pick one backend.")
     p.add_argument("--plan", required=True, choices=PLANS, help="Licensing mode for this product.")
     p.add_argument("--features", default="", help="Comma-separated feature names (gated mode).")
+    p.add_argument("--tier", default="", help="Tier from tiers.json (free, basic, full, ultra). Adds its features to --features.")
     p.add_argument("--license-id", help="Optional ID. Default: LIC-<date>-<random>.")
     p.add_argument("--expires-days", type=int, help="Expire this many days after issue. Omit for perpetual.")
     p.add_argument("--kid", default=os.environ.get("LICENSE_KID") or "k1",
@@ -99,6 +100,16 @@ def parse_args():
     if args.issuer_url and not valid_issuer_url(args.issuer_url):
         p.error("--issuer-url must be an https URL (http is allowed only for localhost)")
     return args
+
+
+def tier_features(tier: str, features: str) -> list:
+    """Explicit feature list: the features given, plus the tier's features from tiers.json.
+    The license stores only feature names, so later edits to tiers.json never change issued licenses."""
+    names = [f.strip() for f in features.split(",") if f.strip()]
+    if tier:
+        from tiers import resolve_tier
+        names += resolve_tier(tier)
+    return sorted(set(names))
 
 
 def valid_issuer_url(url: str) -> bool:
@@ -140,7 +151,7 @@ def main():
         "license_id": args.license_id or make_license_id(),
         "customer": args.customer,
         "plan": args.plan,
-        "features": [f.strip() for f in args.features.split(",") if f.strip()],
+        "features": tier_features(args.tier, args.features),
         "max_installs": args.max_installs,
         "issued_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
